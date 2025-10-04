@@ -1,0 +1,9 @@
+# Entorno Virtual
+.venv/
+__pycache__/
+
+# Archivo de entorno con secretos
+.env
+
+# Archivos de configuración de IDEs
+.vscode/
