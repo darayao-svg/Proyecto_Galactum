@@ -1,35 +1,14 @@
 # app/db/session.py
-import os
-from dotenv import load_dotenv
-
-# Cargar variables desde .env en la raíz del proyecto
-load_dotenv()
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Construcción de DATABASE_URL desde variables de entorno
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "galactum_db")
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-# Engine de SQLAlchemy (con future=True para API moderna)
-engine = create_engine(DATABASE_URL, echo=False, future=True)
-
-# Session local (factory de sesiones)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
-
-# Base declarativa para los modelos
+# Base declarativa para que los modelos la hereden.
+# Esto es lo único que definimos a nivel global en este archivo.
 Base = declarative_base()
 
-# Dependency para endpoints (yield generator)
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# NOTA IMPORTANTE:
+# Hemos eliminado la creación del 'engine' y 'SessionLocal' de este archivo.
+# Se crearán en app/main.py para asegurar que usen las variables de entorno
+# correctas de Render (producción) en lugar de valores locales por defecto.
+# La función get_db también se ha eliminado porque su lógica ahora
+# dependerá de cómo se gestionen las sesiones en los endpoints.

@@ -1,25 +1,31 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine
 
-# --- INICIO DE LA SECCIÓN CRÍTICA ---
-# Primero, importa todo lo relacionado con la configuración y la base de datos
+# --- INICIO DE LA SECCIÓN CRÍTICA (SOLUCIÓN) ---
+
+# 1. Importa la configuración y los componentes de la BD
 from app.core.config import get_settings
-from app.db.session import engine, Base
+from app.db.session import Base
 from app.models.user import User
 from app.models.server import Server
 from app.api.routes import api_router
 
-# Obtén la configuración una sola vez
+# 2. Carga la configuración desde el entorno de Render
 settings = get_settings()
 
-# Imprime la URL para depurar y asegurarte de que es correcta
-print(f"CONFIRMACIÓN DE URL DE BASE DE DATOS: {settings.DATABASE_URL}")
+# 3. Imprime la URL para verificar que Render la está leyendo correctamente
+print(f"URL DE BASE DE DATOS LEÍDA DEL ENTORNO: {settings.DATABASE_URL}")
 
-# Crea las tablas en la base de datos
+# 4. Crea el motor de la base de datos AQUÍ, usando la configuración correcta
+engine = create_engine(settings.DATABASE_URL)
+
+# 5. Usa el nuevo motor para crear las tablas
 print("Verificando y creando tablas de la base de datos si es necesario...")
 Base.metadata.create_all(bind=engine)
 print("¡Tablas listas!")
+
 # --- FIN DE LA SECCIÓN CRÍTICA ---
 
 # Ahora, crea la aplicación FastAPI
