@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
 from app.models.user import User
-# ✅ Importamos el nuevo esquema de respuesta junto a los existentes
+# ✅ Importamos el nuevo esquema de respuesta y los existentes
 from app.schemas.user import UserCreate, UserLogin, UserOut
 from app.schemas.token import TokenResponse
 from app.services.auth import (
@@ -15,23 +15,17 @@ from app.services.auth import (
     get_current_user,
 )
 
-# El prefijo y las etiquetas se mantienen igual
+# El prefijo y las etiquetas que ya tenías son perfectos.
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
-# --- Endpoint de Registro Actualizado ---
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED, name="Register")
 def register(payload: UserCreate, db: Session = Depends(get_db)):
-    """
-    Registra un nuevo usuario en el sistema.
-    La petición original solo pedía 'username', pero tu modelo requiere 'email'.
-    Mantenemos ambos para que coincida con tu base de datos.
-    """
-    if get_user_by_ident(db, payload.username):
-        raise HTTPException(status_code=409, detail="El nombre de usuario ya existe")
-    if get_user_by_ident(db, payload.email):
-        raise HTTPException(status_code=409, detail="El email ya está registrado")
+    # Tu lógica existente para verificar si el usuario ya existe es perfecta.
+    if get_user_by_ident(db, payload.username) or get_user_by_ident(db, payload.email):
+        raise HTTPException(status_code=409, detail="Usuario o email ya existe")
 
+    # Tu modelo de usuario es un poco diferente, así que lo adaptamos
     user = User(
         username=payload.username,
         email=payload.email,
@@ -40,37 +34,29 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    
-    # ✅ Creamos un token inmediatamente después del registro
+
+    # ✅ Creamos un token inmediatamente después del registro.
+    # Usamos 'username' en el 'sub' del token, como en tu lógica de login.
     token = create_access_token({"sub": user.username})
-    
-    # ✅ Devolvemos la respuesta usando el nuevo formato TokenResponse
+
+    # ✅ Devolvemos la respuesta usando el nuevo formato TokenResponse.
     return TokenResponse(message="User registered successfully.", token=token)
 
 
-# --- Endpoint de Login Actualizado ---
 @router.post("/login", response_model=TokenResponse, name="Login")
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    """
-    Inicia sesión para un usuario existente.
-    La petición pedía 'username', pero tu lógica es más flexible y permite
-    iniciar sesión con 'username' o 'email', lo cual es mejor.
-    """
+    # Tu lógica de login es perfecta, solo ajustamos la respuesta.
     user = get_user_by_ident(db, payload.username_or_email)
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
-        
+
     token = create_access_token({"sub": user.username})
 
-    # ✅ Devolvemos la respuesta usando el nuevo formato TokenResponse
+    # ✅ Devolvemos la respuesta usando el nuevo formato TokenResponse.
     return TokenResponse(message="Login successful.", token=token)
 
 
-# --- Endpoint /me (Sin Cambios) ---
-# Este endpoint es muy útil y lo mantenemos como está.
 @router.get("/me", response_model=UserOut, name="Me")
 def me(current_user: User = Depends(get_current_user)):
-    """
-    Obtiene la información del usuario actualmente autenticado.
-    """
+    # Este endpoint es muy útil y lo mantenemos como está.
     return current_user
