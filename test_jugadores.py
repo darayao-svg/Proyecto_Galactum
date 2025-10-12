@@ -20,7 +20,7 @@ engine = create_engine(DATABASE_URL)
 
 # Consultar y mostrar los registros de la tabla 'jugador'
 with engine.connect() as conn:
-    result = conn.execute(text("SELECT nombre, estado FROM asteroides WHERE nombre = 'eduardo'"))
+    result = conn.execute(text("SELECT * FROM jugador"))
     jugadores = result.fetchall()
     for jugador in jugadores:
         print(jugador)
