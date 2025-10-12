@@ -40,7 +40,7 @@ class Settings(BaseSettings):
                 path=path,
                 #path=f"{values.get('DB_NAME')}",
             )
-        )
+        ) 
     
     class Config:
         case_sensitive = True
