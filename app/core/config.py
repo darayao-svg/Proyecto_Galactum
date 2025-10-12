@@ -28,8 +28,8 @@ class Settings(BaseSettings):
         # Corrección para asegurar que no haya doble barra
         path = values.get("DB_NAME", "")
         if not path.startswith("/"):
-            path = f"/{path}"
-
+            path = f"{path}"
+        #path = f"/{path}"
         return str(
             AnyUrl.build(
                 scheme="postgresql+psycopg2",
@@ -38,6 +38,7 @@ class Settings(BaseSettings):
                 host=values.get("DB_HOST"),
                 port=int(values.get("DB_PORT")),
                 path=path,
+                #path=f"{values.get('DB_NAME')}",
             )
         )
     
