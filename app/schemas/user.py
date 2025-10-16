@@ -1,22 +1,19 @@
-from uuid import UUID
 from pydantic import BaseModel, EmailStr
+from uuid import UUID
 
-class UserCreate(BaseModel):
+class UserBase(BaseModel):
     username: str
     email: EmailStr
+
+class UserCreate(UserBase):
     password: str
 
 class UserLogin(BaseModel):
-    username_or_email: str
+    username: str
     password: str
 
-class UserOut(BaseModel):
+class UserOut(UserBase):
     id: UUID
-    username: str
-    email: EmailStr
-    class Config:
-        from_attributes = True  # permitir convertir desde ORM
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+    class Config:
+        from_attributes = True  # Pydantic v2 reemplaza orm_mode

@@ -2,15 +2,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Importamos Base y engine para crear las tablas
-from app.db.session import Base, engine
-# Importamos el router principal
+from app.db.base import Base           # <-- Base está en base.py
+from app.db.session import engine      # <-- engine está en session.py
 from app.api.routes import api_router
 
 # Esta línea asegura que las tablas se creen al iniciar
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Galactum SGM API", version="0.1.0")
+app = FastAPI(title="Galactum API")
 
 app.add_middleware(
     CORSMiddleware,

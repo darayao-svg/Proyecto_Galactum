@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
+from app.db.base import Base
+from app.db.session import engine
 from app.models.user import User
 # ✅ Importamos el nuevo esquema de respuesta junto a los existentes
 from app.schemas.user import UserCreate, UserLogin, UserOut

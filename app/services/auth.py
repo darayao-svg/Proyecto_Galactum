@@ -11,6 +11,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.user import UserCreate
 
 settings = get_settings()
 
@@ -86,3 +87,19 @@ def get_current_user(
     if not user:
         raise cred_exc
     return user
+
+
+def register_user(db: Session, user_in: UserCreate) -> User:
+    hashed_password = hash_password(user_in.password)
+    user = User(username=user_in.username, email=user_in.email, hashed_password=hashed_password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def authenticate_user(db: Session, username: str, password: str) -> User | None:
+    user = db.query(User).filter(User.username == username).first()
+    if user and verify_password(password, user.hashed_password):
+        return user
+    return None

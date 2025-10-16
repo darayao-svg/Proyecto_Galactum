@@ -13,35 +13,27 @@ from sqlalchemy import create_engine
 
 # ¡IMPORTACIÓN CORREGIDA!
 # Basado en tu proyecto, la clase Base probablemente está en session.py
-from app.db.session import Base 
-
-# Importa los modelos para que SQLAlchemy sepa qué tablas crear
-from app.models.user import User
-from app.models.server import Server
+from app.db.base import Base 
+from app.core.config import get_settings
 
 
 # Carga las variables de entorno desde tu archivo .env
 print("Cargando configuración desde el archivo .env...")
 load_dotenv()
 
-# Lee cada variable de entorno necesaria para la conexión
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+settings = get_settings()
 
 # Construye la URL de conexión a la base de datos de Supabase
-if not all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+if not all([settings.DB_USER, settings.DB_PASSWORD, settings.DB_HOST, settings.DB_PORT, settings.DB_NAME]):
     raise ValueError("Una o más variables de entorno de la base de datos no están definidas en tu archivo .env")
 
-DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql+psycopg2://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 
 
 def main():
     try:
         # Crea el "motor" de SQLAlchemy con la URL de Supabase
-        engine = create_engine(DATABASE_URL)
+        engine = create_engine(settings.DATABASE_URL)
         
         print("Conectando a la base de datos en Supabase...")
         engine.connect()
@@ -58,3 +50,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Requerimientos adicionales
+# fastapi
+# sqlalchemy
+# psycopg2-binary
+# pydantic
+# pydantic-settings
+# uvicorn
+# bcrypt
+# python-jose
+# passlib

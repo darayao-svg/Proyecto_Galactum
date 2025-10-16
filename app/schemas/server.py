@@ -1,7 +1,6 @@
 # app/schemas/server.py
-from uuid import UUID
-from typing import Optional
 from pydantic import BaseModel
+from uuid import UUID
 
 class ServerBase(BaseModel):
     name: str
@@ -13,13 +12,22 @@ class ServerCreate(ServerBase):
 
 class ServerUpdate(BaseModel):
     """Payload para actualizar servidor (parcial)."""
-    name: Optional[str] = None
-    region: Optional[str] = None
+    name: str | None = None
+    region: str | None = None
 
 class ServerOut(ServerBase):
     """Respuesta pública de servidor."""
     id: UUID
     owner_id: UUID
 
-    # Permite construir el esquema desde instancias de SQLAlchemy
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True  # Pydantic v2 reemplaza orm_mode
+
+class Server(ServerBase):
+    id: UUID
+    owner_id: UUID
+
+    class Config:
+        from_attributes = True
+
+from app.schemas.server import ServerCreate, ServerUpdate, ServerOut
