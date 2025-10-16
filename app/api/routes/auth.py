@@ -1,10 +1,10 @@
 # app/api/routes/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserOut
+from app.schemas.token import TokenResponse
 from app.models.user import User
 from app.services.auth import (
     get_user_by_ident,
@@ -15,12 +15,6 @@ from app.services.auth import (
 )
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-
-class TokenResponse(BaseModel):
-    status: str = "success"
-    message: str
-    token: str
-
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
@@ -46,20 +40,19 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/login", response_model=TokenResponse, name="Login")
+@router.post("/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    """
-    Inicia sesión para un usuario existente.
-    La petición pedía 'username', pero tu lógica es más flexible y permite
-    iniciar sesión con 'username' o 'email', lo cual es mejor.
-    """
-    user = get_user_by_ident(db, payload.username_or_email)
+    user = get_user_by_ident(db, payload.username)
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
-        
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
+
     token = create_access_token({"sub": user.username})
 
-    return TokenResponse(message="Login successful.", token=token)
+    return TokenResponse(
+        status="success",
+        message="Login successful.",
+        token=token
+    )
 
 
 @router.get("/me", response_model=UserOut, name="Me")
@@ -80,6 +73,11 @@ def hash_password(password: str) -> str:
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    return pwd_context.verify(plain_password, hashed_password)
 
 def create_access_token(data: dict) -> str:
     from jose import jwt
