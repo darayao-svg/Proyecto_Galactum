@@ -1,34 +1,21 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.services.ship import get_all_ships
+from app.schemas.ship import ShipsResponse
 from app.services.auth import get_current_user
 from app.models.user import User
 
 router = APIRouter(prefix="/api/v1/map", tags=["map"])
 
 # --- Obtener estado de las naves ---
-@router.get("/ships", name="Get ships")
-def get_ships(current_user: User = Depends(get_current_user)):
-    """
-    Devuelve la posición y estado de todas las naves en el sistema solar del jugador.
-    (Por ahora se usa información mock hasta conectar con el motor de juego).
-    """
-    data = [
-        {
-            "username": current_user.username,
-            "isMoving": False,
-            "currentPosition": {"x": 150.5, "y": 340.0},
-            "startPosition": None,
-            "endPosition": None,
-        },
-        {
-            "username": "otro_jugador",
-            "isMoving": True,
-            "currentPosition": {"x": 820.1, "y": 512.8},
-            "startPosition": {"x": 800.0, "y": 500.0},
-            "endPosition": {"x": 1200.0, "y": 750.0},
-        },
-    ]
-
-    return {"status": "success", "data": data}
+@router.get("/ships", response_model=ShipsResponse)
+def get_ships(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    ships = get_all_ships(db)
+    return ShipsResponse(status="success", data=ships)
 
 
 # --- Obtener información de asteroides ---
