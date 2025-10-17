@@ -1,17 +1,20 @@
 from sqlalchemy.orm import Session
 from app.models.ship import Ship
+from app.models.user import User
 from app.schemas.ship import ShipStatus, Position
 
 def get_all_ships(db: Session):
     ships = db.query(Ship).all()
     result = []
     for ship in ships:
-        current_pos = Position(x=ship.current_x, y=ship.current_y)
-        start_pos = Position(x=ship.start_x, y=ship.start_y) if ship.start_x and ship.start_y else None
-        end_pos = Position(x=ship.end_x, y=ship.end_y) if ship.end_x and ship.end_y else None
+        user = db.query(User).filter(User.id == ship.owner_id).first()
+        username = user.username if user else "unknown"
+        current_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)
+        start_pos = Position(x=ship.start_pos_x, y=ship.start_pos_y) if ship.start_pos_x is not None and ship.start_pos_y is not None else None
+        end_pos = Position(x=ship.end_pos_x, y=ship.end_pos_y) if ship.end_pos_x is not None and ship.end_pos_y is not None else None
         result.append(
             ShipStatus(
-                username=ship.username,
+                username=username,
                 isMoving=ship.is_moving,
                 currentPosition=current_pos,
                 startPosition=start_pos,
