@@ -5,6 +5,8 @@ from app.services.ship import get_all_ships
 from app.schemas.ship import ShipsResponse
 from app.services.auth import get_current_user
 from app.models.user import User
+from app.services.asteroid import get_all_asteroids
+from app.schemas.asteroid import AsteroidsResponse
 
 router = APIRouter(prefix="/api/v1/map", tags=["map"])
 
@@ -19,27 +21,10 @@ def get_ships(
 
 
 # --- Obtener información de asteroides ---
-@router.get("/asteroids", name="Get asteroids")
-def get_asteroids(current_user: User = Depends(get_current_user)):
-    """
-    Devuelve una lista de asteroides disponibles para minar.
-    (Mock data; se integrará luego con el sistema de minería real).
-    """
-    data = [
-        {
-            "asteroidId": "AST-001",
-            "position": {"x": 250.0, "y": 600.7},
-            "resourceType": "Roderitium",
-        },
-        {
-            "asteroidId": "AST-002",
-            "position": {"x": -400.2, "y": 120.0},
-            "resourceType": "Kliptium",
-        },
-        {
-            "asteroidId": "AST-003",
-            "position": {"x": 780.0, "y": -200.5},
-            "resourceType": "Aluminium",
-        },
-    ]
-    return {"status": "success", "data": data}
+@router.get("/asteroids", response_model=AsteroidsResponse)
+def get_asteroids(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    asteroids = get_all_asteroids(db)
+    return AsteroidsResponse(status="success", data=asteroids)
