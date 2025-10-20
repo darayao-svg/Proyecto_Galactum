@@ -1,5 +1,5 @@
 # app/models/ship.py
-from sqlalchemy import Column, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 import uuid
@@ -15,3 +15,9 @@ class Ship(Base):
     start_pos_y = Column(Float, nullable=True)
     end_pos_x = Column(Float, nullable=True)
     end_pos_y = Column(Float, nullable=True)
+
+    # ¡¡NUEVAS COLUMNAS!!
+    movement_start_time = Column(DateTime, nullable=True)
+    estimated_arrival_time = Column(DateTime, nullable=True)
+    
+    speed = Column(Float, default=100.0) # Velocidad base de la nave (unidades/segundo)
