@@ -8,6 +8,7 @@ from app.api.routes.users import router as users
 from app.api.routes.db_check import router as dbcheck
 from app.api.routes.map import router as map_router
 from app.api.routes.player import router as player_routes
+from app.api.routes.ship import router as ship_router
 
 
 api_router = APIRouter()
@@ -18,3 +19,4 @@ api_router.include_router(users)
 api_router.include_router(dbcheck)
 api_router.include_router(map_router)
 api_router.include_router(player_routes)
+api_router.include_router(ship_router)

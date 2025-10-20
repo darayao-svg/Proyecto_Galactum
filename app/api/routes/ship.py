@@ -12,7 +12,7 @@ from app.schemas.ship import ShipMoveRequest, ShipMoveResponse # Importamos los 
 
 # (En el paso 3 importaremos 'services' aquí)
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/player", tags=["Player"])
 
 @router.post(
     "/move", 
