@@ -10,6 +10,14 @@ from app.services.auth import get_current_user
 from app.models.user import User  # Para el tipo de 'current_user'
 from app.schemas.ship import ShipMoveRequest, ShipMoveResponse # Importamos los schemas
 
+# --- ¡NUEVAS IMPORTACIONES! ---
+# 1. Importamos el servicio que contiene la lógica
+from app.services import ship as ship_service
+# 2. Importamos el modelo de la nave para la consulta
+from app.models.ship import Ship
+# 3. Importamos el schema de posición que necesita el servicio
+from app.schemas.ship import Position
+
 # (En el paso 3 importaremos 'services' aquí)
 
 router = APIRouter(prefix="/api/v1/player", tags=["player"])
@@ -29,19 +37,28 @@ async def move_ship(
     Establece un nuevo punto de destino para la nave del jugador.
     """
     
-    # ---------------------------------------------------------------
-    # ¡AQUÍ IRÁ LA LÓGICA EN EL PASO 4!
-    # Por ahora, solo devolvemos datos falsos para probar
-    # ---------------------------------------------------------------
+    # --- ¡LÓGICA REAL (YA NO SON DATOS FALSOS)! ---
     
-    # Datos falsos temporales
-    fake_eta = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
-    
-    return {
-        "status": "success",
-        "message": "Movement initiated.",
-        "data": {
-            "endPosition": move_request.targetPosition.model_dump(),
-            "estimatedArrivalTime": fake_eta
+    try:
+        # 1. Llamamos a la función del servicio que ya probaste
+        # Le pasamos la BD, el ID del usuario del token, y la posición objetivo
+        real_data = ship_service.start_player_move(
+            db=db,
+            user_id=current_user.id,
+            target_pos=move_request.targetPosition
+        )
+        
+        # 2. Devolvemos la respuesta exitosa
+        return {
+            "status": "success",
+            "message": "Movement initiated.",
+            "data": real_data # Usamos los datos reales devueltos por el servicio
         }
-    }
+        
+    except Exception as e:
+        # 3. Si el servicio falla (ej. "Ship not found"), capturamos 
+        # la excepción y devolvemos un error HTTP claro.
+        raise HTTPException(
+            status_code=400, # 400 = Bad Request (o 404 Not Found)
+            detail=str(e) # Esto mostrará el mensaje de error, ej: "Ship not found..."
+        )

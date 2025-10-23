@@ -39,7 +39,7 @@ def start_player_move(
     """
     
     # 1. Encontrar la nave del jugador actual
-    ship = db.query(models.Ship).filter(models.Ship.owner_id == user_id).first()
+    ship = db.query(Ship).filter(Ship.owner_id == user_id).first()
     
     if not ship:
         # El endpoint capturará este error y devolverá una respuesta HTTP 404 o 500
