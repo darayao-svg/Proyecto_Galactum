@@ -1,5 +1,5 @@
 # Entorno Virtual
-.venv/
+venv/
 __pycache__/
 
 # Archivo de entorno con secretos

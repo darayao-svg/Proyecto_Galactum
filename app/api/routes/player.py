@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from app.services.auth import get_current_user
 from app.models.user import User
+import json
 
 # Definimos el router para este módulo
 router = APIRouter(prefix="/api/v1/player", tags=["player"])
@@ -9,16 +10,19 @@ router = APIRouter(prefix="/api/v1/player", tags=["player"])
 @router.get("/profile", name="Get player profile")
 def get_profile(current_user: User = Depends(get_current_user)):
     """
-    Devuelve la información básica del jugador autenticado.
+    Devuelve la información básica y los recursos del jugador autenticado.
     """
+    if not current_user.jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
+
+    try:
+        recursos = json.loads(current_user.jugador.inventario)
+    except (json.JSONDecodeError, TypeError):
+        recursos = {}
+
     data = {
         "username": current_user.username,
-        "level": 5,  # mock, luego se obtiene de la DB
-        "experience": 1200,
-        "resources": {
-            "gold": 500,
-            "minerals": 300,
-        },
+        "resources": recursos,
     }
     return {"status": "success", "data": data}
 
