@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 # ¡IMPORTACIÓN CORREGIDA!
-# Basado en tu proyecto, la clase Base probablemente está en session.py
+# Basado en tu proyecto, la clase Base probablemente está en db/base.py
 from app.db.base import Base 
 from app.core.config import get_settings
 
