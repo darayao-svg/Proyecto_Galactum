@@ -19,13 +19,9 @@ from app.core.config import get_settings
 # --- ¡¡AQUÍ ESTÁ LA SOLUCIÓN!! ---
 # SQLAlchemy necesita "ver" la definición de tus modelos para poder crearlos.
 from app.models.user import User  # noqa: F401
-from app.models.ship import Ship  # noqa: F401
-from app.models.jugador import Jugador  # noqa: F401
-from app.models.misiones import MisionMaestra, MisionJugador  # noqa: F401
-from app.models.alianzas import Alianza, MiembroAlianza, Asedio, RefuerzoAsedio  # noqa: F401
-from app.models.costos_tripulantes import TripulanteCostoContratar, TripulanteCostoMejora  # noqa: F401
-from app.models.asteroid import Asteroid  # noqa: F401
-from app.models.server import Server  # noqa: F401
+from app.models.jugador import Player  # noqa: F401
+from app.models.ship_rooms import ShipRoom  # noqa: F401
+from app.models.inventory import Inventory  # noqa: F401
 
 # ... (importa cualquier otro modelo que tengas)
 

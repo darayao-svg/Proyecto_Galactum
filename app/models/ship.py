@@ -1,5 +1,6 @@
 # app/models/ship.py
 from sqlalchemy import Column, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 import uuid
@@ -21,3 +22,6 @@ class Ship(Base):
     estimated_arrival_time = Column(DateTime, nullable=True)
     
     speed = Column(Float, default=100.0) # Velocidad base de la nave (unidades/segundo)
+
+    # Relación
+    owner = relationship("User", back_populates="ship")

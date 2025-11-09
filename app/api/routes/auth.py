@@ -8,6 +8,9 @@ from app.schemas.token import TokenResponse
 from app.models.user import User
 from app.services import auth as auth_service
 
+from app.models.jugador import Player
+from app.services.ship_rooms_service import crear_salas_iniciales
+
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
@@ -16,16 +19,34 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=409, detail="Username already exists.")
 
-    user = User(
+    # Hashear el password antes de crear el usuario
+    hashed_password = auth_service.hash_password(payload.password)
+    
+    # Crear el nuevo usuario
+    new_user = User(
         username=payload.username,
         email=payload.email,
-        password_hash=auth_service.hash_password(payload.password)
+        hashed_password=hashed_password
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    db.add(new_user)
+    db.flush() # Para obtener el new_user.id
 
-    token = auth_service.create_access_token({"sub": user.username})
+    # Crear el jugador asociado
+    new_player = Player(user_id=new_user.id)
+    db.add(new_player)
+    db.flush() # Para obtener el new_player.id
+
+    # Crear las salas iniciales para el jugador
+    crear_salas_iniciales(db, player_id=new_player.id)
+
+    # Confirmar toda la transacción
+    db.commit()
+    
+    # Refrescar el usuario para asegurar que los datos están actualizados
+    db.refresh(new_user)
+
+    # Crear el token de acceso
+    token = auth_service.create_access_token({"sub": new_user.username})
 
     return TokenResponse(
         status="success",

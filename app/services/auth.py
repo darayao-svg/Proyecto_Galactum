@@ -55,6 +55,42 @@ def get_user_by_ident(db: Session, ident: str) -> User | None:
     )
 
 
+from app.models.jugador import Player
+from app.services.ship_rooms_service import crear_salas_iniciales
+from app.schemas.user import UserCreate
+
+
+def register_user(db: Session, payload: UserCreate) -> User:
+    """
+    Handles the business logic of creating a new user, their associated player,
+    and the initial ship rooms.
+    """
+    # Hashear el password antes de crear el usuario
+    hashed_password = hash_password(payload.password)
+    
+    # Crear el nuevo usuario
+    new_user = User(
+        username=payload.username,
+        email=payload.email,
+        hashed_password=hashed_password
+    )
+    db.add(new_user)
+    db.flush()  # Para obtener el new_user.id
+
+    # Crear el jugador asociado
+    new_player = Player(user_id=new_user.id)
+    db.add(new_player)
+    db.flush()  # Para obtener el new_player.id
+
+    # Crear las salas iniciales para el jugador
+    crear_salas_iniciales(db, player_id=new_player.id)
+
+    db.commit()
+    db.refresh(new_user)
+    
+    return new_user
+
+
 def get_current_user(
     db: Session = Depends(get_db),
     # ⬇️ En vez de token: str = Depends(oauth2_scheme)

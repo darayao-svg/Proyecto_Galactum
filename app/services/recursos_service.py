@@ -1,67 +1,107 @@
 # app/services/recursos_service.py
 from sqlalchemy.orm import Session
-# ¡Revisa esta importación! Debe apuntar a mi modelo Jugador
-from ..models.jugador import Jugador 
-import json
+from ..models.inventory import Inventory
 
-def _obtener_inventario(jugador: Jugador) -> dict:
-    """Función auxiliar para parsear de forma segura el inventario JSON."""
-    if not jugador.inventario:
-        return {}
-    try:
-        return json.loads(jugador.inventario)
-    except json.JSONDecodeError:
-        return {} # O manejar el error de inventario corrupto
-
-def _guardar_inventario(jugador: Jugador, inventario_dict: dict):
-    """Función auxiliar para guardar de forma segura el inventario JSON."""
-    jugador.inventario = json.dumps(inventario_dict)
-
-
-def agregar_recursos_jugador(db: Session, jugador_id: int, lista_recursos: list):
+def obtener_inventario_jugador(db: Session, player_id: int):
     """
-    Añade recursos al inventario de un jugador.
-    lista_recursos: [{"id": "Roderitium", "quantity": 100}, {"id": "Kliptium", "quantity": 50}]
+    Obtiene todo el inventario de un jugador.
+    Responde a la Tarea 3.1 (GET /player/resources).
     """
-    jugador = db.query(Jugador).filter(Jugador.id == jugador_id).with_for_update().first()
-    if not jugador:
-        raise Exception("Jugador no encontrado")
-        
-    inventario = _obtener_inventario(jugador)
-    
+    return db.query(Inventory).filter(Inventory.player_id == player_id).all()
+
+def agregar_recursos_jugador(db: Session, player_id: int, lista_recursos: list):
+    """
+    Añade una lista de recursos al inventario de un jugador.
+    No hace commit, permitiendo su uso en transacciones más grandes.
+    lista_recursos: [{"id": "Roderitium", "quantity": 100}, ...]
+    """
     for item in lista_recursos:
-        recurso_id = item['id']
-        cantidad = item['quantity']
-        
-        inventario[recurso_id] = inventario.get(recurso_id, 0) + cantidad
-        
-    _guardar_inventario(jugador, inventario)
-    # Nota: No hacemos db.commit() aquí. La función que llama es responsable del commit.
+        resource_id = item['id']
+        quantity = item['quantity']
 
-def verificar_y_consumir_recursos(db: Session, jugador_id: int, lista_costos: list):
+        # Bloquea la fila para evitar race conditions al añadir
+        db_inventory = db.query(Inventory).filter(
+            Inventory.player_id == player_id,
+            Inventory.resource_id == resource_id
+        ).with_for_update().first()
+
+        if db_inventory:
+            db_inventory.quantity += quantity
+        else:
+            db_inventory = Inventory(
+                player_id=player_id,
+                resource_id=resource_id,
+                quantity=quantity
+            )
+            db.add(db_inventory)
+
+def verificar_y_consumir_recursos(db: Session, player_id: int, lista_costos: list):
     """
     Verifica si un jugador tiene suficientes recursos y los consume.
-    Si no tiene, lanza una excepción. Es ATÓMICO.
-    lista_costos: [{"id": "Roderitium", "qty": 5000}, {"id": "Ore", "qty": 100}]
+    Si no tiene, lanza una excepción. Es ATÓMICO dentro de una transacción mayor.
+    No hace commit.
+    lista_costos: [{"id": "Roderitium", "quantity": 50}, ...]
     """
-    jugador = db.query(Jugador).filter(Jugador.id == jugador_id).with_for_update().first()
-    if not jugador:
-        raise Exception("Jugador no encontrado")
-        
-    inventario = _obtener_inventario(jugador)
+    # 1. Fase de Verificación (para fallar rápido antes de modificar)
+    for item in lista_costos:
+        resource_id = item['id']
+        quantity_needed = item['quantity']
 
-    # 1. Fase de Verificación
+        db_inventory = db.query(Inventory).filter(
+            Inventory.player_id == player_id,
+            Inventory.resource_id == resource_id
+        ).first() # No se necesita with_for_update() para una simple lectura
+
+        if not db_inventory or db_inventory.quantity < quantity_needed:
+            raise Exception(f"Recursos insuficientes de: {resource_id}")
+
+    # 2. Fase de Consumo (ahora con bloqueo para la escritura)
     for item in lista_costos:
-        recurso_id = item['id']
-        cantidad_requerida = item['qty']
-        
-        if inventario.get(recurso_id, 0) < cantidad_requerida:
-            raise Exception(f"Recursos insuficientes: Faltan {recurso_id}") # HTTP 400
-    # 2. Fase de Consumo
-    for item in lista_costos:
-        recurso_id = item['id']
-        cantidad_requerida = item['qty']
-        inventario[recurso_id] -= cantidad_requerida
-        
-    _guardar_inventario(jugador, inventario)
-    # Nota: No hacemos db.commit() aquí. La función que llama es responsable del commit.
+        resource_id = item['id']
+        quantity_to_consume = item['quantity']
+
+        # Bloquea la fila para la transacción
+        db_inventory = db.query(Inventory).filter(
+            Inventory.player_id == player_id,
+            Inventory.resource_id == resource_id
+        ).with_for_update().first()
+
+        # La verificación anterior asegura que esto no puede fallar,
+        # pero es una buena práctica tener la lógica completa aquí.
+        if not db_inventory or db_inventory.quantity < quantity_to_consume:
+             # Este error no debería ocurrir si la verificación pasó, pero es una salvaguarda.
+            raise Exception(f"Error de concurrencia o inconsistencia en {resource_id}")
+
+        db_inventory.quantity -= quantity_to_consume
+
+def convertir_recursos(db: Session, player_id: int, recipe_id: str):
+    """
+    Lógica de negocio para convertir un recurso en otro según una receta.
+    Toda la operación es transaccional. El commit/rollback se maneja fuera.
+    Responde a la Tarea 4.2 (POST /resources/convert).
+    """
+    # TODO: Mover las recetas a una tabla de configuración en la BD para mayor flexibilidad.
+    if recipe_id == "Roderitium_a_Ore":
+        costos = [{"id": "Roderitium", "quantity": 10}]
+        productos = [{"id": "Ore", "quantity": 1}]
+    else:
+        # Lanza una excepción que el endpoint convertirá en un HTTP 404
+        raise Exception("Receta no encontrada")
+
+    # --- Lógica Transaccional Atómica ---
+    # El endpoint que llama a esta función se encargará del try/except/commit/rollback.
+
+    # 1. Consumir los recursos de entrada.
+    # Si no hay suficientes, lanzará una excepción y la transacción se revertirá.
+    verificar_y_consumir_recursos(db, player_id, costos)
+
+    # 2. Añadir los recursos de salida.
+    agregar_recursos_jugador(db, player_id, productos)
+
+    # 3. Devolver un mensaje de éxito. El commit se hará en el endpoint.
+    costo = costos[0]
+    producto = productos[0]
+    return {
+        "status": "success",
+        "message": f"Convertido {costo['quantity']} {costo['id']} a {producto['quantity']} {producto['id']}"
+    }

@@ -6,10 +6,12 @@ import uuid
 
 class User(Base):
     __tablename__ = "users"
+    
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    username = Column(String, unique=True, nullable=False)
-    email = Column(String, unique=True, nullable=False)
-    password_hash = Column(String, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
 
-    # Relación inversa para acceder al jugador desde el usuario
+    # Relaciones
     jugador = relationship("Jugador", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    ship = relationship("Ship", back_populates="owner", uselist=False, cascade="all, delete-orphan")
