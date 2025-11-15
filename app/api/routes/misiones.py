@@ -1,47 +1,28 @@
-# app/api/routes/misiones.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+# app/v2_features_beta/models/misiones.py
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+from sqlalchemy.orm import relationship
+# ¡Revisa esta importación! Debe apuntar a mi Base de SQLAlchemy
+from ...db.base import Base
 
-# --- Importaciones Corregidas ---
-# Usamos importaciones absolutas para mayor claridad y consistencia con tu proyecto.
-from app.db.dependencies import get_db
-from app.services.auth import get_current_user
-from app.models.user import User # Para el tipado de current_user
-from app.schemas.misiones import ListaMisionesRespuesta, MisionReclamarPeticion, MisionReclamarRespuesta
-from app.services import misiones_service
-
-router = APIRouter(
-    prefix="/misiones",
-    tags=["Misiones"]
-)
-
-@router.get("", response_model=ListaMisionesRespuesta)
-def obtener_misiones_jugador(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.jugador:
-        raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
-    return misiones_service.obtener_misiones(db, jugador_id=current_user.jugador.id)
-
-@router.post("/reclamar", response_model=MisionReclamarRespuesta)
-def reclamar_mision(
-    peticion: MisionReclamarPeticion,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.jugador:
-        raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
+class MisionMaestra(Base):
+    __tablename__ = "misiones_maestras"
     
-    try:
-        resultado = misiones_service.reclamar_recompensa(db, jugador_id=current_user.jugador.id, peticion=peticion.model_dump())
-        db.commit() # Si todo fue bien en el servicio, confirmamos la transacción.
-        return resultado
-    except Exception as e:
-        db.rollback() # Si algo falló, revertimos todos los cambios.
-        if "Misión no completada" in str(e) or "Recompensa ya reclamada" in str(e):
-            raise HTTPException(status_code=400, detail=str(e))
-        if "Misión no encontrada" in str(e):
-            raise HTTPException(status_code=404, detail=str(e))
-        # Para cualquier otro error inesperado
-        raise HTTPException(status_code=500, detail="Error interno del servidor")
+    mision_id = Column(String, primary_key=True, index=True)
+    tipo_mision = Column(Enum('diaria', 'semanal', 'historia', name='tipo_mision_enum'), nullable=False)
+    titulo = Column(String, nullable=False)
+    descripcion = Column(String)
+    tipo_objetivo = Column(Enum('minar_recurso', 'construir_sala', 'ganar_conflicto', name='tipo_objetivo_enum'), nullable=False)
+    objetivo_id_requerido = Column(String) # Ej: "Roderitium" o "Armeria"
+    cantidad_requerida = Column(Integer, default=1)
+    recompensa_data = Column(String) # JSON String, ej: '[{"id": "Kliptium", "quantity": 100}]'
+
+class MisionJugador(Base):
+    __tablename__ = "misiones_jugadores"
+    
+    mision_jugador_id = Column(Integer, primary_key=True, index=True)
+    jugador_id = Column(Integer, ForeignKey('jugadores.id'))
+    mision_id = Column(String, ForeignKey('misiones_maestras.mision_id'))
+    progreso_actual = Column(Integer, default=0)
+    estado = Column(Enum('activa', 'completada', 'reclamada', name='estado_mision_enum'), default='activa')
+    
+    mision_maestra = relationship("MisionMaestra")

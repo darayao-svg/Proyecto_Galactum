@@ -7,3 +7,7 @@ class ResourceAdd(BaseModel):
 
 class RecipeConvert(BaseModel):
     recipe_id: str
+
+class ResourceConvertResponse(BaseModel):
+    status: str
+    message: str

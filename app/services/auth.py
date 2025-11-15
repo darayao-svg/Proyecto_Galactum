@@ -11,6 +11,10 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.user import User
+from app.models.jugador import Jugador
+from app.services.ship_rooms_service import crear_salas_iniciales
+from app.schemas.user import UserCreate
+
 
 settings = get_settings()
 
@@ -42,22 +46,22 @@ def create_access_token(data: dict, minutes: int | None = None) -> str:
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def get_user_by_ident(db: Session, ident: str) -> User | None:
+def get_user_by_email(db: Session, email: str) -> User | None:
     """
-    Busca por username O email (identificador flexible).
+    Busca un usuario por su email.
     """
-    return (
-        db.execute(
-            select(User).where((User.username == ident) | (User.email == ident))
-        )
-        .scalars()
-        .first()
-    )
+    return db.execute(select(User).where(User.email == email)).scalars().first()
 
 
-from app.models.jugador import Player
-from app.services.ship_rooms_service import crear_salas_iniciales
-from app.schemas.user import UserCreate
+def authenticate_user(db: Session, email: str, password: str) -> User | None:
+    """
+    Busca un usuario por email y verifica su contraseña.
+    Devuelve el objeto User si es exitoso, si no, None.
+    """
+    user = get_user_by_email(db, email)
+    if not user or not verify_password(password, user.hashed_password):  # type: ignore
+        return None
+    return user
 
 
 def register_user(db: Session, payload: UserCreate) -> User:
@@ -65,25 +69,24 @@ def register_user(db: Session, payload: UserCreate) -> User:
     Handles the business logic of creating a new user, their associated player,
     and the initial ship rooms.
     """
-    # Hashear el password antes de crear el usuario
     hashed_password = hash_password(payload.password)
     
-    # Crear el nuevo usuario
     new_user = User(
-        username=payload.username,
         email=payload.email,
         hashed_password=hashed_password
     )
     db.add(new_user)
-    db.flush()  # Para obtener el new_user.id
+    db.flush()
 
-    # Crear el jugador asociado
-    new_player = Player(user_id=new_user.id)
+    new_player = Jugador(
+        user_id=new_user.id,
+        nickname=payload.username
+    )
     db.add(new_player)
-    db.flush()  # Para obtener el new_player.id
+    db.flush()
 
     # Crear las salas iniciales para el jugador
-    crear_salas_iniciales(db, player_id=new_player.id)
+    crear_salas_iniciales(db, player_id=new_player.id)  # type: ignore
 
     db.commit()
     db.refresh(new_user)
@@ -118,7 +121,7 @@ def get_current_user(
         # token inválido / expirado / mal firmado
         raise cred_exc
 
-    user = get_user_by_ident(db, sub)
+    user = get_user_by_email(db, sub) # Usamos la función corregida
     if not user:
         raise cred_exc
     return user

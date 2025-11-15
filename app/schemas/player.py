@@ -1,5 +1,6 @@
 # app/schemas/player.py
 from pydantic import BaseModel
+from typing import List
 
 class InventoryItem(BaseModel):
     resource_id: str
@@ -11,3 +12,6 @@ class InventoryItem(BaseModel):
 class RoomStatus(BaseModel):
     room_id: str
     level: int
+
+class InventoryResponse(BaseModel):
+    recursos: List[InventoryItem]

@@ -1,41 +1,32 @@
-# app/api/routes/conflicto.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+# app/v2_features_beta/schemas/conflicto.py
+from pydantic import BaseModel
+from typing import List
 
-# --- Importaciones Corregidas ---
-from app.db.dependencies import get_db
-from app.services.auth import get_current_user
-from app.models.user import User
-from app.schemas.conflicto import PeticionResolverConflicto, RespuestaResolverConflicto
-from app.services import conflicto_service
+class UnidadAtaque(BaseModel):
+    type: str # "Infanteria", "Drones", etc.
+    quantity: int
 
-router = APIRouter(
-    prefix="/conflict",
-    tags=["Conflicto"]
-)
+class FuerzaAtaque(BaseModel):
+    units: List[UnidadAtaque]
+    assigned_crew_ids: List[str] # Ej: ["crew_id_1", "crew_id_7"]
 
-@router.post("/resolve", response_model=RespuestaResolverConflicto)
-def ejecutar_conflicto(
-    peticion: PeticionResolverConflicto,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    if not current_user.jugador:
-        raise HTTPException(status_code=404, detail="Jugador atacante no encontrado para este usuario.")
+class PeticionResolverConflicto(BaseModel):
+    target_username: str
+    attacking_force: FuerzaAtaque
 
-    try:
-        # El servicio se encarga de la lógica, el endpoint gestiona la transacción y los errores HTTP.
-        resultado = conflicto_service.resolver_conflicto(
-            db,
-            atacante=current_user.jugador, # Pasamos el objeto Jugador, no el User
-            peticion=peticion.model_dump()
-        )
-        db.commit() # Si la resolución fue exitosa, guardamos los cambios (bajas, botín, etc.)
-        return resultado
-    except Exception as e:
-        db.rollback() # Si algo falla, revertimos todos los cambios en la BD.
-        if "Jugador objetivo no encontrado" in str(e):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-        if "No puedes atacarte a ti mismo" in str(e):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno al resolver el conflicto.")
+# --- Respuesta ---
+class PerdidasUnidad(BaseModel):
+    type: str
+    quantity: int
+
+class RecursosGanados(BaseModel):
+    id: str
+    quantity: int
+
+class RespuestaResolverConflicto(BaseModel):
+    status: str
+    outcome: str # "win" o "loss"
+    conflict_id: str
+    attacker_losses: List[PerdidasUnidad]
+    defender_losses: List[PerdidasUnidad]
+    resources_gained: List[RecursosGanados]

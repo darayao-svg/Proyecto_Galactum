@@ -1,14 +1,12 @@
-# app/models/ship.py
-from sqlalchemy import Column, Float, Boolean, ForeignKey, DateTime
+# app/models/ship.py - CORREGIDO
+from sqlalchemy import Column, Float, Boolean, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
-import uuid
 
 class Ship(Base):
     __tablename__ = "ships"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    id = Column(Integer, primary_key=True, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     is_moving = Column(Boolean, default=False)
     current_pos_x = Column(Float)
     current_pos_y = Column(Float)

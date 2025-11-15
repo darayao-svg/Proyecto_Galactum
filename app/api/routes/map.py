@@ -1,12 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.services.ship import get_all_ships
+from app.services.ship_service import get_all_ships
 from app.schemas.ship import ShipsResponse
 from app.services.auth import get_current_user
-from app.models.user import User
-from app.services.asteroid import get_all_asteroids
 from app.schemas.asteroid import AsteroidsResponse
+from app.services.asteroid_service import get_all_asteroids
 
 router = APIRouter(prefix="/api/v1/map", tags=["map"])
 

@@ -1,12 +1,14 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from app.db.base import Base
+from sqlalchemy.orm import relationship
 
 class ShipRoom(Base):
     __tablename__ = "ship_rooms"
-    
+    __table_args__ = (UniqueConstraint('player_id', 'room_id', name='_player_room_uc'),)
+
     id = Column(Integer, primary_key=True, index=True)
-    player_id = Column(Integer, ForeignKey('players.id'), nullable=False)
-    room_id = Column(String, nullable=False) # Ej: "Armeria", "Fabrica"
+    player_id = Column(Integer, ForeignKey('jugadores.id'), nullable=False)
+    room_id = Column(String, nullable=False) # Ej: "EngineRoom", "Bridge"
     level = Column(Integer, default=1, nullable=False)
-    
-    # (Podríamos añadir un UniqueConstraint para player_id y room_id)
+
+    jugador = relationship("Jugador", back_populates="ship_rooms")
