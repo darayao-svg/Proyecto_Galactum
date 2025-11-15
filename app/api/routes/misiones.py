@@ -1,28 +1,39 @@
-# app/v2_features_beta/models/misiones.py
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
-from sqlalchemy.orm import relationship
-# ¡Revisa esta importación! Debe apuntar a mi Base de SQLAlchemy
-from ...db.base import Base
+# app/api/routes/misiones.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
-class MisionMaestra(Base):
-    __tablename__ = "misiones_maestras"
-    
-    mision_id = Column(String, primary_key=True, index=True)
-    tipo_mision = Column(Enum('diaria', 'semanal', 'historia', name='tipo_mision_enum'), nullable=False)
-    titulo = Column(String, nullable=False)
-    descripcion = Column(String)
-    tipo_objetivo = Column(Enum('minar_recurso', 'construir_sala', 'ganar_conflicto', name='tipo_objetivo_enum'), nullable=False)
-    objetivo_id_requerido = Column(String) # Ej: "Roderitium" o "Armeria"
-    cantidad_requerida = Column(Integer, default=1)
-    recompensa_data = Column(String) # JSON String, ej: '[{"id": "Kliptium", "quantity": 100}]'
+from app.db.dependencies import get_db
+from app.services.auth import get_current_user
+from app.models.user import User
+from app.services import misiones_service
+from app.schemas.misiones import MisionesResponse, MisionReclamarPeticion, MisionReclamarRespuesta
 
-class MisionJugador(Base):
-    __tablename__ = "misiones_jugadores"
+router = APIRouter(prefix="/api/v1/misiones", tags=["Misiones"])
+
+@router.get("/", response_model=MisionesResponse)
+def get_misiones(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
     
-    mision_jugador_id = Column(Integer, primary_key=True, index=True)
-    jugador_id = Column(Integer, ForeignKey('jugadores.id'))
-    mision_id = Column(String, ForeignKey('misiones_maestras.mision_id'))
-    progreso_actual = Column(Integer, default=0)
-    estado = Column(Enum('activa', 'completada', 'reclamada', name='estado_mision_enum'), default='activa')
-    
-    mision_maestra = relationship("MisionMaestra")
+    misiones = misiones_service.obtener_misiones(db, current_user.jugador.id)
+    return misiones
+
+@router.post("/reclamar", response_model=MisionReclamarRespuesta)
+def reclamar_mision(
+    peticion: MisionReclamarPeticion,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.jugador:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
+
+    try:
+        resultado = misiones_service.reclamar_recompensa(db, current_user.jugador.id, peticion.model_dump())
+        db.commit()
+        return resultado
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

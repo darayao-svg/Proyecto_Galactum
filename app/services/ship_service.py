@@ -1,5 +1,5 @@
 # app/services/ship_service.py
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.ship import Ship
 from app.models.user import User
 from app.schemas.ship import ShipStatus, Position, ShipMoveResponseData
@@ -10,18 +10,25 @@ def get_all_ships(db: Session):
     """
     Obtiene el estado de todas las naves para el mapa.
     """
-    ships = db.query(Ship).all()
+    # Usamos joinedload para cargar las relaciones en una sola consulta y evitar el problema N+1
+    ships = db.query(Ship).options(
+        joinedload(Ship.owner).joinedload(User.jugador)
+    ).all()
+
     result = []
     for ship in ships:
-        user = db.query(User).filter(User.id == ship.owner_id).first()
-        username = user.username if user else "unknown"
-        current_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)
-        start_pos = Position(x=ship.start_pos_x, y=ship.start_pos_y) if ship.start_pos_x is not None and ship.start_pos_y is not None else None
-        end_pos = Position(x=ship.end_pos_x, y=ship.end_pos_y) if ship.end_pos_x is not None and ship.end_pos_y is not None else None
+        # Accedemos a la relación ya cargada, sin hacer nuevas consultas
+        nickname = "unknown"
+        if ship.owner and ship.owner.jugador:
+            nickname = ship.owner.jugador.nickname
+
+        current_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)  # type: ignore
+        start_pos = Position(x=ship.start_pos_x, y=ship.start_pos_y) if ship.start_pos_x is not None and ship.start_pos_y is not None else None  # type: ignore
+        end_pos = Position(x=ship.end_pos_x, y=ship.end_pos_y) if ship.end_pos_x is not None and ship.end_pos_y is not None else None  # type: ignore
         result.append(
             ShipStatus(
-                username=username,
-                isMoving=ship.is_moving,
+                username=nickname,
+                isMoving=ship.is_moving,  # type: ignore
                 currentPosition=current_pos,
                 startPosition=start_pos,
                 endPosition=end_pos
@@ -46,7 +53,7 @@ def start_player_move(
         
     # 2. Definir variables de inicio del movimiento
     start_time = datetime.now(timezone.utc)
-    start_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)
+    start_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)  # type: ignore
     
     # 3. Calcular distancia y duración del viaje
     distance = math.sqrt(
@@ -57,19 +64,19 @@ def start_player_move(
     if distance == 0:
         raise Exception("Already at target position or invalid distance")
 
-    duration_seconds = distance / ship.speed 
+    duration_seconds = distance / ship.speed  # type: ignore
     
     # 4. Calcular la hora estimada de llegada (ETA)
-    eta = start_time + timedelta(seconds=duration_seconds)
+    eta = start_time + timedelta(seconds=duration_seconds)  # type: ignore
 
     # 5. Actualizar todas las columnas de la nave en la BD
-    ship.is_moving = True
-    ship.start_pos_x = start_pos.x
-    ship.start_pos_y = start_pos.y
-    ship.end_pos_x = target_pos.x
-    ship.end_pos_y = target_pos.y
-    ship.movement_start_time = start_time
-    ship.estimated_arrival_time = eta
+    ship.is_moving = True  # type: ignore
+    ship.start_pos_x = start_pos.x  # type: ignore
+    ship.start_pos_y = start_pos.y  # type: ignore
+    ship.end_pos_x = target_pos.x  # type: ignore
+    ship.end_pos_y = target_pos.y  # type: ignore
+    ship.movement_start_time = start_time  # type: ignore
+    ship.estimated_arrival_time = eta  # type: ignore
     
     db.commit()
     db.refresh(ship)

@@ -29,3 +29,14 @@ class ShipMoveResponse(BaseModel):
     status: str
     message: str
     data: ShipMoveResponseData
+
+# --- Schemas para Mejora de Salas ---
+class RoomUpgradeRequest(BaseModel):
+    room_id: str
+    target_level: int
+
+class RoomUpgradeResponse(BaseModel):
+    status: str
+    message: str
+    room_id: str
+    new_level: int

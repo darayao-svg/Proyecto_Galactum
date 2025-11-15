@@ -10,6 +10,11 @@ from app.api.routes.map import router as map_router
 from app.api.routes.player import router as player_routes
 from app.api.routes.ship import router as ship_router
 from app.api.routes.recursos import router as recursos_router
+# --- Routers de VME ---
+from app.api.routes.misiones import router as misiones_router
+from app.api.routes.crafting import router as crafting_router
+from app.api.routes.unidades import router as unidades_router
+
 
 api_router = APIRouter()
 api_router.include_router(health)
@@ -21,3 +26,6 @@ api_router.include_router(map_router)
 api_router.include_router(player_routes)
 api_router.include_router(ship_router)
 api_router.include_router(recursos_router)
+api_router.include_router(misiones_router)
+api_router.include_router(crafting_router)
+api_router.include_router(unidades_router)
