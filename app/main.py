@@ -1,6 +1,7 @@
 # app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app.db.base import Base           # <-- Base está en base.py
 from app.db.session import engine      # <-- engine está en session.py
@@ -21,4 +22,6 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Versión final para forzar el despliegue
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
