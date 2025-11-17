@@ -59,7 +59,7 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     Devuelve el objeto User si es exitoso, si no, None.
     """
     user = get_user_by_email(db, email)
-    if not user or not verify_password(password, user.hashed_password):  # type: ignore
+    if not user or not verify_password(password, user.password_hash):  # type: ignore
         return None
     return user
 
@@ -69,11 +69,12 @@ def register_user(db: Session, payload: UserCreate) -> User:
     Handles the business logic of creating a new user, their associated player,
     and the initial ship rooms.
     """
-    hashed_password = hash_password(payload.password)
+    password_hash = hash_password(payload.password)
     
     new_user = User(
         email=payload.email,
-        hashed_password=hashed_password
+        username=payload.username,
+        password_hash=password_hash
     )
     db.add(new_user)
     db.flush()
