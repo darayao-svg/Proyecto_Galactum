@@ -15,6 +15,7 @@ from app.api.routes.misiones import router as misiones_router
 from app.api.routes.crafting import router as crafting_router
 from app.api.routes.unidades import router as unidades_router
 from app.api.routes.config import router as config_router
+from app.api.routes.tripulantes import router as tripulantes_router
 
 
 api_router = APIRouter()
@@ -31,3 +32,4 @@ api_router.include_router(misiones_router)
 api_router.include_router(crafting_router)
 api_router.include_router(unidades_router)
 api_router.include_router(config_router)
+api_router.include_router(tripulantes_router)

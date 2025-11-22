@@ -12,3 +12,4 @@ class ShipRoom(Base):
     level = Column(Integer, default=1, nullable=False)
 
     jugador = relationship("Jugador", back_populates="ship_rooms")
+    tripulante = relationship("Tripulante", uselist=False, back_populates="room")

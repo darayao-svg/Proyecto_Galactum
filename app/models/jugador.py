@@ -14,3 +14,4 @@ class Jugador(Base):
     
     inventory = relationship("Inventory", back_populates="jugador", cascade="all, delete-orphan")
     ship_rooms = relationship("ShipRoom", back_populates="jugador", cascade="all, delete-orphan")
+    tripulantes = relationship("Tripulante", back_populates="jugador", cascade="all, delete-orphan")
