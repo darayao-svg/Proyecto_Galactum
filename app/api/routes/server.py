@@ -29,12 +29,7 @@ def register_server(
     db.add(srv)
     db.commit()
     db.refresh(srv)
-    return ServerOut(
-        id=str(srv.id),
-        name=srv.name,
-        region=srv.region,
-        owner_id=str(srv.owner_id),
-    )
+    return srv
 
 
 # Listar SÓLO mis servers
@@ -45,8 +40,7 @@ def my_servers(
 ):
     rows = db.execute(select(Server).where(Server.owner_id == me.id).order_by(Server.created_at.desc())).scalars().all()
     return [
-        ServerOut(id=str(s.id), name=s.name, region=s.region, owner_id=str(s.owner_id))
-        for s in rows
+        s for s in rows
     ]
 
 
@@ -65,12 +59,7 @@ def get_server_by_id(
         # No existe o no es tuyo → 404 (para no filtrar info de otros dueños)
         raise HTTPException(status_code=404, detail="Server no encontrado")
 
-    return ServerOut(
-        id=str(srv.id),
-        name=srv.name,
-        region=srv.region,
-        owner_id=str(srv.owner_id),
-    )
+    return srv
 
 
 # Actualizar (sólo si es mío)
@@ -93,20 +82,15 @@ def update_server(
         conflict = db.execute(select(Server).where(Server.name == payload.name)).scalars().first()
         if conflict:
             raise HTTPException(status_code=409, detail="Ya existe un server con ese nombre")
-        srv.name = payload.name
+        srv.name = payload.name # type: ignore
 
     if payload.region:
-        srv.region = payload.region
+        srv.region = payload.region # type: ignore
 
     db.commit()
     db.refresh(srv)
 
-    return ServerOut(
-        id=str(srv.id),
-        name=srv.name,
-        region=srv.region,
-        owner_id=str(srv.owner_id),
-    )
+    return srv
 
 
 # Eliminar (sólo si es mío)

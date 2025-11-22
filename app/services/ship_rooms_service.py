@@ -23,17 +23,6 @@ def crear_salas_iniciales(db: Session, player_id: int):
     # Nota: No hacemos commit aquí. El servicio que nos llama (auth_service)
     # se encargará del commit de la transacción completa.
 
-def crear_salas_iniciales(db: Session, player_id: int):
-    for sala in SALAS_INICIALES:
-        db_room = ShipRoom(
-            player_id=player_id,
-            room_id=sala["room_id"],
-            level=sala["level"]
-        )
-        db.add(db_room)
-    # Nota: No hacemos commit aquí. El servicio que nos llama (auth_service)
-    # se encargará del commit de la transacción completa.
-
 def obtener_info_salas(db: Session, player_id: int):
     """
     Obtiene la información de las salas de un jugador, incluyendo el costo de la próxima mejora.
@@ -67,7 +56,7 @@ def obtener_info_salas(db: Session, player_id: int):
             "roomId": room.room_id,
             "level": room.level,
             # Si encontramos un costo de mejora, lo incluimos. Si no (porque es el nivel máximo), será null.
-            "nextLevelCost": json.loads(cost_config.cost_data) if cost_config else None
+            "nextLevelCost": json.loads(cost_config.cost_data) if cost_config else None # type: ignore
         }
         response_data.append(room_info)
         
@@ -110,14 +99,14 @@ def upgrade_room(db: Session, player_id: int, room_id: str):
 
     costo_lista = json.loads(cost_config.cost_data) # type: ignore
 
-    # 3. Llamar al servicio de recursos para consumir el costo
+    # 3. Llamar al servicio de recursos para consumir el costo (usando el ID numérico del jugador)
     # Si no hay suficientes recursos, lanzará una excepción y la transacción se revertirá.
-    recursos_service.verificar_y_consumir_recursos(db, player_profile.id, costo_lista)
+    recursos_service.verificar_y_consumir_recursos(db, player_profile.id, costo_lista) # type: ignore
 
     # 4. Si tiene éxito, actualizar el nivel de la sala
     room_to_upgrade.level = target_level # type: ignore
 
     # 5. Hook de Misión: Notificar al servicio de misiones sobre la mejora
-    misiones_service.actualizar_progreso_mision(db, player_profile.id, tipo_objetivo='upgrade_room', objetivo_id=room_id)
+    misiones_service.actualizar_progreso_mision(db, player_profile.id, tipo_objetivo='upgrade_room', objetivo_id=room_id) # type: ignore
 
     return room_to_upgrade

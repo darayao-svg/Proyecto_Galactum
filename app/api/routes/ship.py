@@ -32,7 +32,7 @@ async def move_ship(
         # Le pasamos la BD, el ID del usuario y la posición objetivo
         real_data = ship_service.start_player_move(
             db=db,
-            user_id=current_user.id,
+            user_id=str(current_user.id),
             target_pos=move_request.targetPosition
         )
         
@@ -70,7 +70,7 @@ async def get_player_rooms(
     """
     # Llamamos a la nueva función del servicio que obtiene la información combinada.
     # El ID del jugador se obtiene a través del token de autenticación.
-    rooms_info = ship_rooms_service.obtener_info_salas(db=db, player_id=current_user.id)
+    rooms_info = ship_rooms_service.obtener_info_salas(db=db, player_id=current_user.jugador.id)
     return rooms_info
 
 
@@ -91,7 +91,7 @@ async def upgrade_player_room(
     try:
         # La lógica transaccional está encapsulada en el servicio.
         # El servicio se encargará de verificar recursos y actualizar el nivel.
-        ship_rooms_service.upgrade_room(db=db, player_id=current_user.id, room_id=room_id)
+        ship_rooms_service.upgrade_room(db=db, player_id=current_user.jugador.id, room_id=room_id)
         db.commit() # Si el servicio no lanzó una excepción, confirmamos la transacción.
         
         return {"status": "success", "message": "Mejora iniciada."}

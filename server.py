@@ -22,7 +22,7 @@ def register_server(db: Session, owner_id: UUID, data: ServerCreate) -> Server:
 
 # Listar los servidores del owner
 def get_user_servers(db: Session, owner_id: UUID) -> List[Server]:
-    return db.execute(select(Server).where(Server.owner_id == owner_id)).scalars().all()
+    return list(db.execute(select(Server).where(Server.owner_id == owner_id)).scalars().all())
 
 # Obtener por id
 def get_server_by_id(db: Session, server_id: UUID) -> Optional[Server]:

@@ -1,12 +1,13 @@
 # tests/test_auth.py
 import os
 import uuid
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.db.session import Base, get_db
+from app.db.dependencies import get_db
+from app.db.base import Base
 from app.models.user import User
+import pytest
 
 # =========================================================
 # 🔹 CONFIGURAR BASE DE DATOS ANTES DE IMPORTAR app
@@ -18,7 +19,7 @@ from app.main import app  # <-- Importar después de setear DATABASE_URL
 # =========================================================
 # 🔹 CONFIGURACIÓN DE SESIÓN DE TEST
 # =========================================================
-SQLALCHEMY_TEST_URL = os.getenv("DATABASE_URL")
+SQLALCHEMY_TEST_URL = os.getenv("DATABASE_URL", "sqlite:///:memory:")
 engine_test = create_engine(SQLALCHEMY_TEST_URL, pool_pre_ping=True)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 

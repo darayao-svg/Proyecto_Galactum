@@ -10,7 +10,7 @@ load_dotenv()
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL) # type: ignore
 
 # Construir la URL de conexión
 #DB_USER = os.getenv("DB_USER")
@@ -22,7 +22,7 @@ engine = create_engine(DATABASE_URL)
 #DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # Crear engine de SQLAlchemy
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL) # type: ignore
 
 # Consultar y mostrar los registros de la tabla 'jugador'
 with engine.connect() as conn:

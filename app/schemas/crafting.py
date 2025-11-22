@@ -1,6 +1,6 @@
 # app/schemas/crafting.py
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 
 class CraftRequest(BaseModel):
@@ -27,14 +27,6 @@ class JobResponse(BaseModel):
     status: str
     job_id: str
     completion_time: datetime
-
-class EquipmentItem(BaseModel):
-    item_id: str
-    name: str
-    quantity: int
-
-class EquipmentResponse(BaseModel):
-    data: List[EquipmentItem]
 
 class EquipmentItem(BaseModel):
     item_id: str

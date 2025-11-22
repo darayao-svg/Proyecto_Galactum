@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 
 # --- Importaciones de tu proyecto ---
 from app.db.dependencies import get_db # Para obtener una sesión de BD
-from app.services.ship import start_player_move # ¡La función que queremos probar!
+from app.services.ship_service import start_player_move # ¡La función que queremos probar!
 from app.schemas.ship import Position # El 'contrato' de la posición
 from app.models.user import User # Para buscar un usuario de prueba
 
@@ -40,7 +40,7 @@ try:
     print("\nLlamando a la función 'start_player_move'...")
     resultado = start_player_move(
         db=db, 
-        user_id=user_id_de_prueba, 
+        user_id=str(user_id_de_prueba), 
         target_pos=posicion_objetivo
     )
     
@@ -54,7 +54,7 @@ try:
     # tiene 'is_moving' en 'true' y las nuevas coordenadas.
 
 except Exception as e:
-    print(f"\n¡ERROR DURANTE LA PRUEBA! La función falló.")
+    print(f"\n¡ERROR DURANTE LA PRUEBA! La función falló. {e}")
     print(f"Detalle del error: {e}")
 
 finally:

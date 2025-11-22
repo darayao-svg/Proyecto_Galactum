@@ -29,5 +29,3 @@ class Server(ServerBase):
 
     class Config:
         from_attributes = True
-
-from app.schemas.server import ServerCreate, ServerUpdate, ServerOut

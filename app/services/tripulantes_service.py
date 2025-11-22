@@ -34,14 +34,14 @@ def asignar_tripulante(db: Session, player_id: int, crew_id: int, slot_id: int):
         raise HTTPException(status_code=400, detail="La sala ya está ocupada.")
 
     # Desasignar el tripulante de cualquier otra sala
-    if tripulante.slot_id:
+    if tripulante.slot_id is not None:
         sala_anterior = db.query(ShipRoom).filter(ShipRoom.id == tripulante.slot_id).first()
         if sala_anterior:
             # Esto es una inconsistencia de datos si ocurre, pero lo manejamos por si acaso
             logger.warning(f"Inconsistencia: El tripulante {crew_id} estaba en la sala {tripulante.slot_id} que ya no tiene referencia a él.")
 
     # Asignar a la nueva sala
-    tripulante.slot_id = slot_id
+    tripulante.slot_id = slot_id # type: ignore
     db.commit()
     db.refresh(tripulante)
     
@@ -64,12 +64,12 @@ def subir_nivel_tripulante(db: Session, player_id: int, crew_id: int):
         Inventory.resource_id == coste_recurso
     ).first()
 
-    if not inventario_jugador or inventario_jugador.quantity < coste_cantidad:
+    if not inventario_jugador or inventario_jugador.quantity < coste_cantidad: # type: ignore
         raise HTTPException(status_code=400, detail=f"Recursos insuficientes. Se necesitan {coste_cantidad} de {coste_recurso}.")
 
     # Actualizar nivel y recursos
-    inventario_jugador.quantity -= coste_cantidad
-    tripulante.nivel += 1
+    inventario_jugador.quantity -= coste_cantidad # type: ignore
+    tripulante.nivel += 1 # type: ignore
     db.commit()
     db.refresh(tripulante)
     db.refresh(inventario_jugador)
@@ -103,12 +103,12 @@ def especializar_tripulante(db: Session, player_id: int, crew_id: int, specializ
         Inventory.resource_id == coste_recurso
     ).first()
 
-    if not inventario_jugador or inventario_jugador.quantity < coste_cantidad:
+    if not inventario_jugador or inventario_jugador.quantity < coste_cantidad: # type: ignore
         raise HTTPException(status_code=400, detail=f"Recursos insuficientes. Se necesitan {coste_cantidad} de {coste_recurso}.")
 
     # Actualizar especialización y recursos
-    inventario_jugador.quantity -= coste_cantidad
-    tripulante.especializacion = especializaciones_validas[specialization_id]
+    inventario_jugador.quantity -= coste_cantidad # type: ignore
+    tripulante.especializacion = especializaciones_validas[specialization_id] # type: ignore
     db.commit()
     db.refresh(tripulante)
     db.refresh(inventario_jugador)

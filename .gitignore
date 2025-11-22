@@ -1,3 +1,22 @@
+# Entornos Virtuales
+.venv/
+venv/
+env/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Carpetas de distribución
+build/
+dist/
+*.egg-info/
+
+# Carpetas de IDEs
+.vscode/
+.idea/
 # Entorno Virtual
 venv/
 __pycache__/

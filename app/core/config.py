@@ -1,14 +1,13 @@
 # app/core/config.py
 from pydantic_settings import BaseSettings
-from pydantic import validator, AnyUrl
-from typing import Dict, Any, Optional
+from typing import Optional
 from functools import lru_cache
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Galactum API"
     API_V1_STR: str = "/api/v1"
     
-    SECRET_KEY: str
+    SECRET_KEY: str = "a_very_secret_key"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     ALGORITHM: str = "HS256"
 

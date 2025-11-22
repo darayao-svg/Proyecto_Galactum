@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import uuid
 
 # --- Importaciones necesarias ---
-from ...models.jugador import Player as Jugador
+from ...models.jugador import Jugador
 from ...models.user import User
 # TODO: Importar modelos de tripulantes y unidades cuando existan
 # from ..models.tripulantes import TripulanteJugador
@@ -58,7 +58,7 @@ def resolver_conflicto(db: Session, atacante: Jugador, peticion: dict):
     defensor = db.query(Jugador).join(User).filter(User.username == peticion['target_username']).first()
     if not defensor:
         raise Exception("Jugador objetivo no encontrado")
-    if defensor.id == atacante.id:
+    if defensor.id == atacante.id: # type: ignore
         raise Exception("No puedes atacarte a ti mismo")
         
     # Lógica Faltante: Cargar tropas y tripulantes de defensa del defensor

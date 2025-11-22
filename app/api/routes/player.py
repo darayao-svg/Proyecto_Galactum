@@ -42,7 +42,7 @@ def get_ship_config(
         raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
 
     # Llamamos al servicio para obtener las salas desde la BD
-    salas = ship_rooms_service.obtener_configuracion_salas(db, player_id=current_user.jugador.id)
+    salas = ship_rooms_service.obtener_info_salas(db, player_id=current_user.jugador.id)
     
     return salas
 

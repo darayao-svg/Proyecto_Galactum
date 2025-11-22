@@ -1,21 +1,20 @@
 # app/api/routes/__init__.py
 from fastapi import APIRouter
 
-from app.api.routes.health import router as health
 from app.api.routes.auth import router as auth_router
-from app.api.routes.server import router as server_router
-from app.api.routes.users import router as users
-from app.api.routes.db_check import router as dbcheck
-from app.api.routes.map import router as map_router
-from app.api.routes.player import router as player_routes
-from app.api.routes.ship import router as ship_router
-from app.api.routes.recursos import router as recursos_router
-# --- Routers de VME ---
-from app.api.routes.misiones import router as misiones_router
-from app.api.routes.crafting import router as crafting_router
-from app.api.routes.unidades import router as unidades_router
 from app.api.routes.config import router as config_router
+from app.api.routes.crafting import router as crafting_router
+from app.api.routes.db_check import router as dbcheck
+from app.api.routes.health import router as health
+from app.api.routes.map import router as map_router
+from app.api.routes.misiones import router as misiones_router
+from app.api.routes.player import router as player_routes
+from app.api.routes.recursos import router as recursos_router
+from app.api.routes.server import router as server_router
+from app.api.routes.ship import router as ship_router
 from app.api.routes.tripulantes import router as tripulantes_router
+from app.api.routes.unidades import router as unidades_router
+from app.api.routes.users import router as users
 
 
 api_router = APIRouter()

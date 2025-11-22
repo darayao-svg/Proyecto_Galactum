@@ -1,10 +1,14 @@
 import sys
 import os
-from dotenv import load_dotenv
 import pytest
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.db.session import Base, get_db
+
+from app.db.dependencies import get_db
+from app.db.base import Base
+from app.main import app
+
 
 # =========================================================
 # 1️⃣ Añadir la raíz del proyecto al PYTHONPATH
@@ -40,13 +44,14 @@ Base.metadata.create_all(bind=engine_test)
 
 # Sobrescribir get_db para usar SQLite temporal en test_auth.py
 def override_get_db():
+    db = None
     try:
         db = TestingSessionLocal()
         yield db
     finally:
-        db.close()
+        if db:
+            db.close()
 
-from app.main import app
 app.dependency_overrides[get_db] = override_get_db
 
 # =========================================================

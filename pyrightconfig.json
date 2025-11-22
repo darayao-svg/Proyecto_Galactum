@@ -1,5 +1,5 @@
 {
-  "include": ["app"],
+  "include": [".", "app"],
   "exclude": ["**/__pycache__"],
   "reportMissingImports": true,
   "pythonVersion": "3.10",

@@ -19,7 +19,7 @@ from app.core.config import get_settings
 # --- ¡¡AQUÍ ESTÁ LA SOLUCIÓN!! ---
 # SQLAlchemy necesita "ver" la definición de tus modelos para poder crearlos.
 from app.models.user import User  # noqa: F401
-from app.models.jugador import Player  # noqa: F401
+from app.models.jugador import Jugador  # noqa: F401
 from app.models.ship_rooms import ShipRoom  # noqa: F401
 from app.models.inventory import Inventory  # noqa: F401
 
@@ -42,7 +42,9 @@ if not all([settings.DB_USER, settings.DB_PASSWORD, settings.DB_HOST, settings.D
 def main():
     try:
         # Crea el "motor" de SQLAlchemy con la URL de Supabase
-        engine = create_engine(settings.DATABASE_URL)
+        if not settings.DATABASE_URL:
+            raise ValueError("DATABASE_URL no está configurada en las variables de entorno")
+        engine = create_engine(settings.DATABASE_URL) # type: ignore
         
         print("Conectando a la base de datos en Supabase...")
         engine.connect()
