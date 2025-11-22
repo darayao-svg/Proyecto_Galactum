@@ -1,66 +1,41 @@
 # app/services/crafting_service.py
 from sqlalchemy.orm import Session
-import json
+from datetime import datetime, timedelta
 
-from app.models.config_craft_recipes import ConfigCraftRecipe
-from app.models.player_equipment import PlayerEquipment
-from app.models.ship_rooms import ShipRoom
-from app.services import recursos_service
-from app.services import misiones_service
+# Es necesario importar los modelos de la base de datos.
+# Asumo que tienes un modelo 'Recipe' en 'app/models/crafting.py'
+# y un modelo 'Job' en 'app/models/job.py'
+from app.models.crafting import Recipe
+from app.models.job import Job
 
-def craft_item(db: Session, player_id: int, recipe_id: str, quantity: int = 1):
+def obtener_recetas(db: Session, tipo: str):
     """
-    Lógica de negocio para craftear un ítem. Es una operación transaccional.
-    El commit/rollback debe ser manejado por el endpoint que la llama.
+    Obtiene todas las recetas de un tipo específico ('fabrica' o 'armeria')
+    desde la base de datos.
     """
-    # 1. Buscar la receta
-    recipe = db.query(ConfigCraftRecipe).filter(ConfigCraftRecipe.recipe_id == recipe_id).first()
-    if not recipe:
-        raise Exception(f"Receta '{recipe_id}' no encontrada.")
+    recetas_db = db.query(Recipe).filter(Recipe.type == tipo).all()
+    return recetas_db
 
-    # 2. Verificar prerrequisito de sala
-    required_room_id = recipe.required_room_id
-    required_room_level = recipe.required_room_level
+def iniciar_trabajo_crafteo(db: Session, player_id: int, recipe_id: str):
+    """
+    Inicia un nuevo trabajo de crafteo.
+    TODO: Implementar la lógica de consumo de recursos.
+    """
+    receta = db.query(Recipe).filter(Recipe.id == recipe_id).first()
+    if not receta:
+        raise Exception("Receta no encontrada")
 
-    player_room = db.query(ShipRoom).filter(
-        ShipRoom.player_id == player_id,
-        ShipRoom.room_id == required_room_id
-    ).first()
+    # Lógica de ejemplo: el trabajo dura 5 minutos
+    tiempo_finalizacion = datetime.utcnow() + timedelta(minutes=5)
 
-    if not player_room or player_room.level < required_room_level:  # type: ignore
-        raise Exception(f"Se requiere {required_room_id} Nivel {required_room_level} para esta receta.")
-
-    # 3. Cargar y calcular el costo total
-    costo_unitario = json.loads(recipe.resource_cost_json)  # type: ignore
-    costo_total = [{"id": item["id"], "quantity": item["quantity"] * quantity} for item in costo_unitario]
-
-    # 4. Llamar al servicio de recursos para consumir el costo
-    recursos_service.verificar_y_consumir_recursos(db, player_id, costo_total)
-
-    # 5. Si tiene éxito, añadir el ítem al inventario de equipo del jugador
-    output_item_id = recipe.output_item_id
-    player_item = db.query(PlayerEquipment).filter(
-        PlayerEquipment.player_id == player_id,
-        PlayerEquipment.item_id == output_item_id
-    ).with_for_update().first()
-
-    if player_item:
-        player_item.quantity += quantity  # type: ignore
-    else:
-        player_item = PlayerEquipment(
-            player_id=player_id,
-            item_id=output_item_id,
-            quantity=quantity
-        )
-        db.add(player_item)
-
-    # 6. Hook de Misión: Notificar al servicio de misiones sobre el crafteo
-    misiones_service.actualizar_progreso_mision(
-        db, player_id, tipo_objetivo='craft_item', objetivo_id=recipe_id, cantidad=quantity
+    nuevo_trabajo = Job(
+        player_id=player_id,
+        job_type='crafting',
+        related_id=recipe_id,
+        completion_time=tiempo_finalizacion
     )
+    db.add(nuevo_trabajo)
+    db.flush() # Para obtener el ID del trabajo antes del commit
+    return nuevo_trabajo
 
-    # El commit se maneja en el endpoint
-    return {
-        "crafted_item_id": output_item_id,
-        "crafted_quantity": quantity
-    }
+# TODO: Implementar la función craft_item que se usa en el endpoint legacy.
