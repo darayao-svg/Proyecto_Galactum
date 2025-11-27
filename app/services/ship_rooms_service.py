@@ -28,16 +28,16 @@ def obtener_info_salas(db: Session, player_id: int):
     Obtiene la información de las salas de un jugador, incluyendo el costo de la próxima mejora.
     Esta función reemplaza a la antigua `obtener_configuracion_salas`.
     """
-    # --- CORRECCIÓN ---
-    # 1. El 'player_id' que recibimos es el UUID del usuario. Necesitamos el ID numérico del jugador.
-    # Buscamos en la tabla 'players' (o 'jugadores') usando el user_id (UUID).
-    player_profile = db.query(Jugador).filter(Jugador.user_id == player_id).first()
+    # --- NUEVA CORRECCIÓN ---
+    # El 'player_id' que recibimos desde el endpoint es el ID numérico del jugador (jugador.id).
+    # Por lo tanto, debemos buscar en la tabla 'jugadores' usando su clave primaria 'id'.
+    player_profile = db.query(Jugador).filter(Jugador.id == player_id).first()
 
     if not player_profile:
         # Si por alguna razón no hay un perfil de jugador para este usuario, devolvemos una lista vacía.
         return []
 
-    # 2. Ahora usamos el ID numérico del jugador (player_profile.id) para buscar sus salas.
+    # Ahora usamos el ID numérico del jugador (player_profile.id) para buscar sus salas.
     player_rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_profile.id).all()
     
     response_data = []
@@ -69,14 +69,14 @@ def upgrade_room(db: Session, player_id: int, room_id: str):
     Lógica de negocio para mejorar una sala. Es una operación transaccional.
     El commit/rollback debe ser manejado por el endpoint que la llama.
     """
-    # --- CORRECCIÓN ---
-    # Al igual que en la función anterior, necesitamos el ID numérico del jugador.
-    player_profile = db.query(Jugador).filter(Jugador.user_id == player_id).first()
+    # --- NUEVA CORRECCIÓN ---
+    # Al igual que en la función anterior, el 'player_id' es el ID numérico.
+    player_profile = db.query(Jugador).filter(Jugador.id == player_id).first()
 
     if not player_profile:
         raise Exception("Perfil de jugador no encontrado para este usuario.")
 
-    # 1. Buscar la sala actual del jugador usando el ID numérico.
+    # Buscar la sala actual del jugador usando el ID numérico.
     room_to_upgrade = db.query(ShipRoom).filter(
         ShipRoom.player_id == player_profile.id,
         ShipRoom.room_id == room_id
