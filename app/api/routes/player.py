@@ -5,7 +5,7 @@ from typing import List, Any, Dict
 from app.services.auth import get_current_user
 from app.models.user import User
 from app.db.dependencies import get_db
-from app.services import ship_rooms_service, ship_service
+from app.services import ship_rooms_service,ship
 from app.services import recursos_service
 from app.schemas.player import InventoryResponse
 
@@ -55,7 +55,7 @@ def get_player_stats(
     incluyendo bonificaciones de salas y tripulación.
     """
     try:
-        stats = ship_service.get_player_ship_stats(db, str(current_user.id))
+        stats = ship.get_player_ship_stats(db, str(current_user.id))
         return {"status": "success", "data": stats}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
