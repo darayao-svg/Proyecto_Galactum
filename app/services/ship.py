@@ -56,6 +56,12 @@ def start_player_move(
     Inicia el movimiento de la nave de un jugador y actualiza la base de datos.
     """
     
+    # 0. Clamp coordinates to map limits
+    clamped_x = max(MAP_MIN_COORDINATE, min(target_pos.x, MAP_MAX_COORDINATE))
+    clamped_y = max(MAP_MIN_COORDINATE, min(target_pos.y, MAP_MAX_COORDINATE))
+    
+    clamped_target_pos = Position(x=clamped_x, y=clamped_y)
+
     # 1. Encontrar la nave del jugador actual
     ship = db.query(Ship).filter(Ship.owner_id == user_id).first()
     
@@ -68,8 +74,8 @@ def start_player_move(
     
     # 3. Calcular distancia y duración del viaje
     distance = math.sqrt(
-        (target_pos.x - start_pos.x) ** 2 + 
-        (target_pos.y - start_pos.y) ** 2
+        (clamped_target_pos.x - start_pos.x) ** 2 + 
+        (clamped_target_pos.y - start_pos.y) ** 2
     )
     
     if distance == 0:
@@ -84,8 +90,8 @@ def start_player_move(
     ship.is_moving = True  # type: ignore
     ship.start_pos_x = start_pos.x  # type: ignore
     ship.start_pos_y = start_pos.y  # type: ignore
-    ship.end_pos_x = target_pos.x  # type: ignore
-    ship.end_pos_y = target_pos.y  # type: ignore
+    ship.end_pos_x = clamped_target_pos.x  # type: ignore
+    ship.end_pos_y = clamped_target_pos.y  # type: ignore
     ship.movement_start_time = start_time  # type: ignore
     ship.estimated_arrival_time = eta  # type: ignore
 
@@ -98,7 +104,7 @@ def start_player_move(
 
     # 6. Preparar y devolver los datos para la respuesta de la API
     return ShipMoveResponseData(
-        endPosition=target_pos,
+        endPosition=clamped_target_pos,
         estimatedArrivalTime=eta
     )
 
