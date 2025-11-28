@@ -1,11 +1,14 @@
 # app/services/ship.py
 from sqlalchemy.orm import Session, joinedload
 from app.models.ship import Ship
+from app.models.ship_rooms import ShipRoom
+from app.models.tripulante import Tripulante
 from app.models.user import User
 from app.schemas.ship import ShipStatus, Position, ShipMoveResponseData
 import math
 import random # <-- ¡CORRECCIÓN! Importamos el módulo 'random'
 from datetime import datetime, timezone, timedelta
+from typing import cast
 
 # Límites del mapa definidos como constantes para fácil mantenimiento
 MAP_MIN_COORDINATE = -10000
@@ -84,6 +87,10 @@ def start_player_move(
     ship.end_pos_y = target_pos.y  # type: ignore
     ship.movement_start_time = start_time  # type: ignore
     ship.estimated_arrival_time = eta  # type: ignore
+
+    # TODO: Notificar al Servidor de Sistema Solar (SSS)
+    # Aquí se enviaría una solicitud HTTP o un mensaje (ej. RabbitMQ, gRPC) al SSS
+    # informando del nuevo destino y ETA del jugador.
     
     db.commit()
     db.refresh(ship)
@@ -93,6 +100,50 @@ def start_player_move(
         endPosition=target_pos,
         estimatedArrivalTime=eta
     )
+
+def get_player_ship_stats(db: Session, user_id: str):
+    """
+    Calcula las estadísticas finales de la nave de un jugador, aplicando bonificaciones.
+    """
+    # 1. Cargar datos base
+    ship = db.query(Ship).filter(Ship.owner_id == user_id).first()
+    if not ship:
+        raise Exception("Nave no encontrada para el usuario.")
+
+    player_id = ship.owner.jugador.id # type: ignore
+    rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_id).all()
+    crew = db.query(Tripulante).filter(Tripulante.player_id == player_id).all()
+
+    # 2. Iniciar con las estadísticas base de la nave
+    final_stats = {
+        "cargo_capacity": ship.cargo_capacity,
+        "shield_points": ship.shield_points,
+        "hull_points": ship.hull_points,
+        "impulse_speed": ship.speed,
+        "extractor_level": ship.extractor_level,
+        "weapon_slots": ship.weapon_slots,
+        "crew_slots": ship.crew_slots
+    }
+
+    # 3. Aplicar bonificaciones de salas
+    # (Ejemplo: cada nivel de la Fábrica aumenta la capacidad de carga en 100)
+    for room in rooms:
+        if cast(str, room.room_id) == "Fabrica":
+            final_stats["cargo_capacity"] += cast(int, room.level) * 100
+
+    # 4. Aplicar bonificaciones de tripulación asignada
+    # (Ejemplo: un tripulante asignado a la sala de motores (ID 1) aumenta la velocidad)
+    for member in crew:
+        if cast(int, member.slot_id) == 1: # Asumimos que la sala de motores tiene slot_id 1
+            # Cada punto de agilidad del tripulante asignado aumenta la velocidad en 5
+            final_stats["impulse_speed"] += cast(int, member.agilidad) * 5
+        
+        # (Ejemplo: un tripulante en la sala de minería (ID 2) aumenta el nivel del extractor)
+        if cast(int, member.slot_id) == 2:
+            # Cada 10 puntos de percepción aumentan el nivel del extractor en 1
+            final_stats["extractor_level"] += cast(int, member.percepcion) // 10
+
+    return final_stats
 
 def create_initial_ship(db: Session, user_id: "uuid.UUID") -> Ship:
     """
