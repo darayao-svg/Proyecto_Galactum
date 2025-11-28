@@ -6,8 +6,13 @@ from app.models.tripulante import Tripulante
 from app.models.user import User
 from app.schemas.ship import ShipStatus, Position, ShipMoveResponseData
 import math
+import random # <-- ¡CORRECCIÓN! Importamos el módulo 'random'
 from datetime import datetime, timezone, timedelta
 from typing import cast
+
+# Límites del mapa definidos como constantes para fácil mantenimiento
+MAP_MIN_COORDINATE = -10000
+MAP_MAX_COORDINATE = 10000
 
 def get_all_ships(db: Session):
     """
@@ -137,3 +142,36 @@ def get_player_ship_stats(db: Session, user_id: str):
             final_stats["extractor_level"] += cast(int, member.percepcion) // 10
 
     return final_stats
+
+def create_initial_ship(db: Session, user_id: str) -> Ship:
+    """
+    Crea y registra una nueva nave para un usuario recién registrado.
+    Esta función se llama durante el proceso de registro de usuario.
+
+    Args:
+        db (Session): La sesión de base de datos activa.
+        user_id (uuid.UUID): El ID del usuario propietario de la nave.
+    
+    Returns:
+        Ship: La instancia del modelo Ship recién creada.
+    """
+    # 1. Generar coordenadas aleatorias para la posición inicial
+    initial_pos_x = float(random.randint(MAP_MIN_COORDINATE, MAP_MAX_COORDINATE))
+    initial_pos_y = float(random.randint(MAP_MIN_COORDINATE, MAP_MAX_COORDINATE))
+
+    # 2. Crear la instancia del modelo Ship con los valores iniciales
+    new_ship = Ship(
+        owner_id=user_id,
+        is_moving=False,
+        current_pos_x=initial_pos_x,
+        current_pos_y=initial_pos_y,
+        # Asignamos la posición inicial también a start_pos para consistencia
+        start_pos_x=initial_pos_x,
+        start_pos_y=initial_pos_y,
+        # El resto de campos (end_pos, speed, etc.) se dejan en su valor por defecto.
+    )
+
+    # 3. Añadir la nueva nave a la sesión de la base de datos.
+    # El 'commit' se debe manejar en el servicio que orquesta la transacción (ej. auth_service).
+    db.add(new_ship)
+    return new_ship

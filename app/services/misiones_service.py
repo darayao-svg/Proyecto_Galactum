@@ -2,7 +2,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from app.models.misiones import MisionJugador
-from app.services.recursos_service import agregar_recursos_jugador
 import json
 
 def obtener_misiones(db: Session, jugador_id: int):
@@ -39,6 +38,10 @@ def obtener_misiones(db: Session, jugador_id: int):
     return {"status": "success", "misiones_diarias": misiones_diarias_resp, "misiones_historia": misiones_historia_resp}
 
 def reclamar_recompensa(db: Session, jugador_id: int, peticion: dict):
+    # --- CORRECCIÓN: Importación Local ---
+    # Importamos el servicio aquí para romper el ciclo de importación.
+    from app.services.recursos_service import agregar_recursos_jugador
+
     mision_id = peticion['mision_id']
     mision_jugador = db.query(MisionJugador).options(
         joinedload(MisionJugador.mision_maestra)

@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Session
 from app.models.ship_rooms import ShipRoom
-from app.models.jugador import Jugador # <-- ¡CORRECCIÓN! Usamos el modelo y archivo correctos.
+from app.models.user import User # Importamos el modelo User para buscar por user_id
 from app.models.config_room_costs import ConfigRoomCost
 from app.services import recursos_service
 from app.services import misiones_service
 import json
 from datetime import datetime, timedelta, timezone
+import uuid
 from typing import cast
 
 # Lista de salas iniciales
@@ -20,7 +21,18 @@ CONFIG_ROOM_DETAILS = {
     "Armeria": {"name": "Armería", "description": "Diseña y construye armamento avanzado."}
 }
 
-def crear_salas_iniciales(db: Session, player_id: int):
+def crear_salas_iniciales(db: Session, user_id: uuid.UUID):
+    """
+    Crea las salas iniciales para un jugador.
+    Corrección: Ahora recibe user_id (UUID) y busca el jugador correspondiente.
+    """
+    # Buscamos el perfil del jugador a través de la relación con el usuario.
+    user = db.query(User).filter(User.id == user_id).one_or_none()
+    if not user or not user.jugador:
+        # Esto no debería ocurrir en un flujo de registro normal, pero es una validación segura.
+        raise Exception("No se encontró el perfil de jugador para el usuario al crear salas.")
+
+    player_id = user.jugador.id # Obtenemos el ID numérico del jugador.
     for sala in SALAS_INICIALES:
         db_room = ShipRoom(
             player_id=player_id,
@@ -28,26 +40,15 @@ def crear_salas_iniciales(db: Session, player_id: int):
             level=sala["level"]
         )
         db.add(db_room)
-    # Nota: No hacemos commit aquí. El servicio que nos llama (auth_service)
-    # se encargará del commit de la transacción completa.
+    # El commit se maneja en el servicio que orquesta la transacción (ej. auth_service).
 
 def obtener_info_salas(db: Session, player_id: int):
     """
     Obtiene la información de las salas de un jugador, incluyendo el costo de la próxima mejora.
-    Esta función reemplaza a la antigua `obtener_configuracion_salas`.
+    Recibe el ID numérico del jugador directamente.
     """
-    # --- CORRECCIÓN ---
-    # 1. El 'player_id' que recibimos es el UUID del usuario. Necesitamos el ID numérico del jugador.
-    # Buscamos en la tabla 'players' (o 'jugadores') usando el user_id (UUID).
-    player_profile = db.query(Jugador).filter(Jugador.user_id == player_id).first()
-
-    if not player_profile:
-        # Si por alguna razón no hay un perfil de jugador para este usuario, devolvemos una lista vacía.
-        return []
-
-    # 2. Ahora usamos el ID numérico del jugador (player_profile.id) para buscar sus salas.
-    player_rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_profile.id).all()
-    
+    player_rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_id).all()
+ 
     response_data = []
     for room in player_rooms:
         # 2. Para cada sala, calculamos cuál sería el siguiente nivel.
@@ -81,16 +82,9 @@ def upgrade_room(db: Session, player_id: int, room_id: str):
     Lógica de negocio para INICIAR la mejora asíncrona de una sala.
     El commit/rollback debe ser manejado por el endpoint que la llama.
     """
-    # --- CORRECCIÓN ---
-    # Al igual que en la función anterior, necesitamos el ID numérico del jugador.
-    player_profile = db.query(Jugador).filter(Jugador.user_id == player_id).first()
-
-    if not player_profile:
-        raise Exception("Perfil de jugador no encontrado para este usuario.")
-
-    # 1. Buscar la sala actual del jugador usando el ID numérico.
+    # 1. Buscar la sala actual del jugador.
     room_to_upgrade = db.query(ShipRoom).filter(
-        ShipRoom.player_id == player_profile.id,
+        ShipRoom.player_id == player_id,
         ShipRoom.room_id == room_id
     ).with_for_update().first()
 
@@ -119,7 +113,7 @@ def upgrade_room(db: Session, player_id: int, room_id: str):
     duration_seconds = cost_config.duration_seconds if hasattr(cost_config, 'duration_seconds') else 3600 # Default a 1 hora
 
     # Si no hay suficientes recursos, lanzará una excepción y la transacción se revertirá.
-    recursos_service.verificar_y_consumir_recursos(db, player_profile.id, costo_lista) # type: ignore
+    recursos_service.verificar_y_consumir_recursos(db, player_id, costo_lista) # type: ignore
 
     # 4. Actualizar la sala para iniciar la mejora
     now = datetime.now(timezone.utc)
@@ -130,7 +124,7 @@ def upgrade_room(db: Session, player_id: int, room_id: str):
     # NO actualizamos el nivel todavía.
 
     # 5. Hook de Misión: Notificar al servicio de misiones sobre la mejora
-    misiones_service.actualizar_progreso_mision(db, player_profile.id, tipo_objetivo='upgrade_room', objetivo_id=room_id) # type: ignore
+    misiones_service.actualizar_progreso_mision(db, player_id, tipo_objetivo='upgrade_room', objetivo_id=room_id) # type: ignore
 
     # 6. Devolver la respuesta esperada
     return {

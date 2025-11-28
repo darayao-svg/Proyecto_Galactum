@@ -10,10 +10,11 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.schemas.user import UserCreate
+from app.services import ship_service, ship_rooms_service # <-- ¡Importamos los servicios!
+
 from app.models.user import User
 from app.models.jugador import Jugador
-from app.services.ship_rooms_service import crear_salas_iniciales
-from app.schemas.user import UserCreate
 
 
 settings = get_settings()
@@ -66,33 +67,54 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
 def register_user(db: Session, payload: UserCreate) -> User:
     """
-    Handles the business logic of creating a new user, their associated player,
-    and the initial ship rooms.
+    Handles the business logic of creating a new user, their associated ship,
+    player, and the initial ship rooms.
     """
+    # 1. Preparación de datos
     password_hash = hash_password(payload.password)
     
-    new_user = User(
-        email=payload.email,
-        username=payload.username,
-        password_hash=password_hash
-    )
-    db.add(new_user)
-    db.flush()
-
-    new_player = Jugador(
-        user_id=new_user.id,
-        nickname=payload.username
-    )
-    db.add(new_player)
-    db.flush()
-
-    # Crear las salas iniciales para el jugador
-    crear_salas_iniciales(db, player_id=new_player.id)  # type: ignore
-
-    db.commit()
-    db.refresh(new_user)
+    # --- INICIO DE LA TRANSACCIÓN ---
+    try:
+        # 2. CREAR USUARIO (USER)
+        new_user = User(
+            email=payload.email,
+            username=payload.username,
+            password_hash=password_hash
+        )
+        db.add(new_user)
+        db.flush() # Necesario para obtener new_user.id
     
-    return new_user
+        # 3. CREAR JUGADOR (PLAYER)
+        # El jugador está ligado al ID del usuario (user_id = user.id)
+        new_player = Jugador(
+            user_id=new_user.id,
+            nickname=payload.username
+        )
+        db.add(new_player)
+        db.flush() # ¡CORRECCIÓN! Es necesario para que la relación user.jugador se actualice en la sesión.
+    
+        # --- ORQUESTACIÓN DE SERVICIOS ---
+
+        # 4. CREAR NAVE (SHIP) llamando al servicio correspondiente
+        # El servicio se encarga de la lógica de la posición aleatoria.
+        ship_service.create_initial_ship(db, user_id=str(new_user.id))
+
+        # 5. CREAR SALAS INICIALES (SHIP ROOMS) llamando al servicio
+        # Corrección: Pasamos el user_id, como espera la función corregida.
+        ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id) # type: ignore
+
+        # --- FIN DE LA ORQUESTACIÓN ---
+    
+        # 6. CONFIRMAR TRANSACCIÓN
+        db.commit()
+        db.refresh(new_user)
+        
+        return new_user
+
+    except Exception as e:
+        # 7. REVERTIR TRANSACCIÓN en caso de error
+        db.rollback()
+        raise e
 
 
 def get_current_user(
