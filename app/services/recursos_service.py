@@ -1,6 +1,8 @@
 # app/services/recursos_service.py
 from sqlalchemy.orm import Session
 from ..models.inventory import Inventory
+from ..models.ship import Ship
+from typing import cast
 
 def obtener_inventario_jugador(db: Session, player_id: int):
     """
@@ -105,3 +107,43 @@ def convertir_recursos(db: Session, player_id: int, recipe_id: str):
         "status": "success",
         "message": f"Convertido {costo['quantity']} {costo['id']} a {producto['quantity']} {producto['id']}"
     }
+
+def registrar_extraccion_recursos(db: Session, player_id: int, source_id: str, resources_gained: list):
+    """
+    Añade recursos de una fuente externa (minería) tras una validación.
+    Es una operación transaccional.
+    """
+    # 1. Validación Crítica
+    # En un sistema real, aquí habría una lógica compleja para evitar trampas.
+    # Por ejemplo, verificar un log de combate, un trabajo completado, o la posición de la nave.
+    
+    # Ejemplo de validación: La nave del jugador debe estar cerca del asteroide.
+    # Asumimos que los IDs de asteroides tienen un formato como "AST-XXX"
+    if source_id.startswith("AST-"):
+        # Mock de la posición del asteroide. En un caso real, esto vendría de la BD.
+        asteroid_positions = {
+            "AST-001": {"x": 150, "y": 340},
+            "AST-002": {"x": 800, "y": 600},
+        }
+        asteroid_pos = asteroid_positions.get(source_id)
+        if not asteroid_pos:
+            raise Exception(f"Fuente de recursos inválida: {source_id}")
+
+        ship = db.query(Ship).filter(Ship.owner_id == player_id).first()
+        
+        # Separamos las validaciones para claridad y para ayudar a Pylance
+        if not ship:
+            raise Exception("Validación de acción fallida: Nave no encontrada.")
+        
+        if cast(bool, ship.is_moving):
+            raise Exception("Validación de acción fallida: La nave está en movimiento.")
+
+        is_at_position = cast(float, ship.current_pos_x) == asteroid_pos['x'] and cast(float, ship.current_pos_y) == asteroid_pos['y']
+        if not is_at_position:
+            raise Exception("Validación de acción fallida: La nave no está en la ubicación correcta.")
+
+    # 2. Ejecutar Transacción Atómica
+    # Si la validación es exitosa, añadimos los recursos.
+    agregar_recursos_jugador(db, player_id, resources_gained)
+
+    return {"status": "success", "resources_added": resources_gained}

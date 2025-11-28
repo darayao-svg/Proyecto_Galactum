@@ -9,6 +9,7 @@ from app.api.routes.health import router as health
 from app.api.routes.map import router as map_router
 from app.api.routes.misiones import router as misiones_router
 from app.api.routes.player import router as player_routes
+from app.api.routes.mining import router as mining_router # <-- AÑADIR
 from app.api.routes.recursos import router as recursos_router
 from app.api.routes.server import router as server_router
 from app.api.routes.ship import router as ship_router
@@ -26,6 +27,7 @@ api_router.include_router(dbcheck)
 api_router.include_router(map_router)
 api_router.include_router(player_routes)
 api_router.include_router(ship_router)
+api_router.include_router(mining_router) # <-- AÑADIR
 api_router.include_router(recursos_router)
 api_router.include_router(misiones_router)
 api_router.include_router(crafting_router)

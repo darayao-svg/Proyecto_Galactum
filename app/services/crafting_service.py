@@ -1,75 +1,80 @@
 # app/services/crafting_service.py
+# app/services/crafting_service.py
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-
-# Es necesario importar los modelos de la base de datos.
-# Asumo que tienes un modelo 'Recipe' en 'app/models/crafting.py'
-# y un modelo 'Job' en 'app/models/job.py'
-from app.models.crafting import Recipe
-from app.models.job import Job
-from app.services import recursos_service, inventory_service
+from app.models.crafting import Recipe  # CORRECCIÓN: Usar el modelo Recipe existente
+from app.models.ship_rooms import ShipRoom # CORRECCIÓN: Usar el modelo ShipRoom existente
+from app.services.recursos_service import verificar_y_consumir_recursos, agregar_recursos_jugador # CORRECCIÓN: Importar la función correcta
 import json
+from typing import cast
 
-
-def obtener_recetas(db: Session, tipo: str):
+def craftear_recurso(db: Session, jugador_id: int, receta_id: str): # El ID de la receta es un string
     """
-    Obtiene todas las recetas de un tipo específico ('fabrica' o 'armeria')
-    desde la base de datos.
+    Gestiona la lógica de crafteo para un jugador.
+
+    1. Valida la receta y los prerrequisitos del jugador.
+    2. Ejecuta una transacción atómica para consumir recursos de entrada y añadir los de salida.
     """
-    recetas_db = db.query(Recipe).filter(Recipe.type == tipo).all()
-    return recetas_db
+    # 1. OBTENER LA RECETA
+    receta_db = db.query(Recipe).filter(Recipe.id == receta_id).first()
+    if not receta_db:
+        raise ValueError("La receta especificada no existe.")
 
-def iniciar_trabajo_crafteo(db: Session, player_id: int, recipe_id: str):
-    """
-    Inicia un nuevo trabajo de crafteo.
-    TODO: Implementar la lógica de consumo de recursos.
-    """
-    receta = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    if not receta:
-        raise Exception("Receta no encontrada")
+    # 2. VERIFICAR PRERREQUISITOS (NIVEL DE SALA)
+    # Asumimos que el 'type' de la receta ('fabrica' o 'armeria') corresponde al 'room_id' de la sala.
+    # Y que el nivel requerido es 1 por defecto (puedes añadir una columna a tu modelo Recipe si necesitas más flexibilidad).
+    # Usamos `cast` para decirle a Pylance que trate esto como un string, no como una columna.
+    sala_requerida_id = cast(str, receta_db.type)
+    nivel_sala_requerido = 1  # Asumimos nivel 1, ya que no está en el modelo Recipe
 
-    # Lógica de ejemplo: el trabajo dura 5 minutos
-    tiempo_finalizacion = datetime.utcnow() + timedelta(minutes=5)
+    # Si la receta especifica un tipo de sala, verificamos los prerrequisitos.
+    # Usamos un `if` simple para que Pylance no se confunda.
+    if sala_requerida_id:
+        sala_jugador = db.query(ShipRoom).filter(
+            ShipRoom.player_id == jugador_id,
+            ShipRoom.room_id == sala_requerida_id
+        ).first()
 
-    nuevo_trabajo = Job(
-        player_id=player_id,
-        job_type='crafting',
-        related_id=recipe_id,
-        completion_time=tiempo_finalizacion
-    )
-    db.add(nuevo_trabajo)
-    db.flush() # Para obtener el ID del trabajo antes del commit
-    return nuevo_trabajo
+        # Separamos las comprobaciones para mayor claridad y para ayudar al linter.
+        if sala_jugador is None:
+            raise PermissionError(
+                f"Se requiere la sala '{sala_requerida_id}' para craftear este item."
+            )
+        # Usamos `cast` de nuevo para la comparación numérica.
+        if cast(int, sala_jugador.level) < nivel_sala_requerido:
+            raise PermissionError(
+                f"Se requiere la sala '{sala_requerida_id}' a nivel {nivel_sala_requerido}."
+            )
 
-def craft_item(db: Session, player_id: int, recipe_id: str, quantity: int = 1):
-    """
-    Lógica de negocio para craftear un ítem (legacy). Es una operación transaccional.
-    El commit/rollback debe ser manejado por el endpoint que la llama.
-    """
-    # 1. Buscar la receta
-    recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
-    if not recipe:
-        raise Exception(f"Receta '{recipe_id}' no encontrada.")
+    # Parsear datos JSON de la receta
+    try:
+        # CORRECCIÓN: Asignamos a una variable para asegurar que el tipo es una lista.
+        ingredients_data = receta_db.ingredients
+        recursos_entrada: list = ingredients_data if isinstance(ingredients_data, list) else []
+        # Asumimos que la salida es 1 unidad del item que representa la receta.
+        recursos_salida = [{"id": receta_db.id, "quantity": 1}]
+    except (json.JSONDecodeError, TypeError):
+        raise ValueError("Formato de datos de receta inválido.")
 
-    # 2. Cargar y calcular el costo total
-    costo_unitario = json.loads(recipe.ingredients) # type: ignore
-    costo_total = [{"id": item["item_id"], "quantity": item["quantity"] * quantity} for item in costo_unitario]
+    # --- INICIO DE LA TRANSACCIÓN LÓGICA ---
+    # La atomicidad la garantiza el patrón de Session de FastAPI.
+    # Si alguna de las siguientes operaciones falla, se hará rollback.
 
-    # 3. Llamar al servicio de recursos para consumir el costo
-    recursos_service.verificar_y_consumir_recursos(db, player_id, costo_total)
+    # 3. VERIFICAR Y CONSUMIR RECURSOS DE ENTRADA
+    try:
+        verificar_y_consumir_recursos(db, jugador_id, recursos_entrada) # Ahora el tipo es correcto.
+    except ValueError as e:
+        # Re-lanzamos la excepción con un mensaje más específico para el crafteo.
+        raise ValueError(f"Recursos insuficientes para craftear: {e}") from e
 
-    # 4. Si tiene éxito, añadir el ítem al inventario de equipamiento
-    # Asumimos que el 'id' de la receta es el 'item_id' del producto final.
-    crafted_item_id = recipe.id # type: ignore
-    inventory_service.agregar_equipo(db, player_id, crafted_item_id, quantity) # type: ignore
+    # 4. AÑADIR RECURSOS/ITEMS DE SALIDA
+    agregar_recursos_jugador(db, jugador_id, recursos_salida) # CORRECCIÓN: Usar la función correcta
 
-    # 5. Hook de Misión: Notificar al servicio de misiones sobre la creación
-    # (Ajusta 'tipo_objetivo' y 'objetivo_id' según tu modelo de misiones)
-    # misiones_service.actualizar_progreso_mision(
-    #     db, player_id, tipo_objetivo='craft_item', objetivo_id=crafted_item_id, cantidad=quantity
-    # )
+    # --- FIN DE LA TRANSACCIÓN LÓGICA ---
+    # El commit se gestionará en el endpoint.
 
+    # 5. RESPUESTA
+    # El servicio devuelve los datos para que el endpoint construya la respuesta HTTP.
     return {
-        "crafted_item_id": crafted_item_id,
-        "crafted_quantity": quantity
+        "consumed": recursos_entrada,
+        "produced": recursos_salida
     }

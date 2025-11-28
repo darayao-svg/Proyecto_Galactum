@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Any, Dict
 
 from app.services.auth import get_current_user
 from app.models.user import User
 from app.db.dependencies import get_db
-from app.services import ship_rooms_service
+from app.services import ship_rooms_service, ship_service
 from app.services import recursos_service
-from app.schemas.ship_room import ShipRoomOut
 from app.schemas.player import InventoryResponse
 
 # Definimos el router para este módulo
@@ -30,21 +29,36 @@ def get_profile(current_user: User = Depends(get_current_user)):
     return {"status": "success", "data": data}
 
 # --- Obtener configuración de salas de la nave ---
-@router.get("/config", response_model=List[ShipRoomOut], name="Get player ship configuration")
+@router.get("/rooms", response_model=List[Dict[str, Any]], name="Get player ship rooms")
 def get_ship_config(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Devuelve una lista con los niveles de todas las salas de la nave del jugador.
+    Devuelve una lista con el estado y costo de mejora de todas las salas de la nave.
     """
     if not current_user.jugador:
         raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
 
     # Llamamos al servicio para obtener las salas desde la BD
-    salas = ship_rooms_service.obtener_info_salas(db, player_id=current_user.jugador.id)
+    salas = ship_rooms_service.obtener_info_salas(db, player_id=current_user.jugador.id) # type: ignore
     
     return salas
+
+@router.get("/stats", name="Get player final stats")
+def get_player_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calcula y devuelve las estadísticas finales de la nave del jugador,
+    incluyendo bonificaciones de salas y tripulación.
+    """
+    try:
+        stats = ship_service.get_player_ship_stats(db, str(current_user.id))
+        return {"status": "success", "data": stats}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # --- Obtener inventario de recursos del jugador ---
 @router.get("/resources", response_model=InventoryResponse, name="Get player resources")
