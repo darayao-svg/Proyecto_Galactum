@@ -24,7 +24,9 @@ class ShipMoveRequest(BaseModel):
     targetPosition: Position
 
 class ShipMoveResponseData(BaseModel):
+    startPosition: Position        # Posición inicial (x, y)
     endPosition: Position
+    movementStartTime: datetime    # Hora exacta de inicio
     estimatedArrivalTime: datetime
 
 class ShipMoveResponse(BaseModel):

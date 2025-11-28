@@ -104,7 +104,9 @@ def start_player_move(
 
     # 6. Preparar y devolver los datos para la respuesta de la API
     return ShipMoveResponseData(
+        startPosition=start_pos,       # <--- LÍNEA AGREGADA
         endPosition=clamped_target_pos,
+        movementStartTime=start_time,  # <--- LÍNEA AGREGADA
         estimatedArrivalTime=eta
     )
 
