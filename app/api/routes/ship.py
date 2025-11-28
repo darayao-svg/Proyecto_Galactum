@@ -90,11 +90,11 @@ async def upgrade_player_room(
     """
     try:
         # La lógica transaccional está encapsulada en el servicio.
-        # El servicio se encargará de verificar recursos y actualizar el nivel.
-        ship_rooms_service.upgrade_room(db=db, player_id=current_user.jugador.id, room_id=room_id)
+        # El servicio ahora inicia una mejora asíncrona.
+        resultado = ship_rooms_service.upgrade_room(db=db, player_id=current_user.jugador.id, room_id=room_id) # type: ignore
         db.commit() # Si el servicio no lanzó una excepción, confirmamos la transacción.
         
-        return {"status": "success", "message": "Mejora iniciada."}
+        return resultado
     
     except Exception as e:
         db.rollback() # Si algo falla (ej. falta de recursos), revertimos cualquier cambio.

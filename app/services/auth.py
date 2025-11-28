@@ -15,7 +15,6 @@ from app.services import ship, ship_rooms_service # <-- ¡Importamos los servici
 
 from app.models.user import User
 from app.models.jugador import Jugador
-from app.models.ship import Ship # ¡Asegúrate de importar el modelo Ship!
 
 
 settings = get_settings()
@@ -98,11 +97,11 @@ def register_user(db: Session, payload: UserCreate) -> User:
 
         # 4. CREAR NAVE (SHIP) llamando al servicio correspondiente
         # El servicio se encarga de la lógica de la posición aleatoria.
-        ship.create_initial_ship(db, user_id=new_user.id)
+        ship.create_initial_ship(db, user_id=str(new_user.id))
 
         # 5. CREAR SALAS INICIALES (SHIP ROOMS) llamando al servicio
         # Corrección: Pasamos el user_id, como espera la función corregida.
-        ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id)
+        ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id) # type: ignore
 
         # --- FIN DE LA ORQUESTACIÓN ---
     

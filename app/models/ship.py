@@ -23,6 +23,14 @@ class Ship(Base):
     estimated_arrival_time = Column(DateTime, nullable=True)
     
     speed = Column(Float, default=100.0) # Velocidad base de la nave (unidades/segundo)
+    
+    # --- Nuevos Atributos de Estadísticas Base ---
+    cargo_capacity = Column(Integer, default=1000)
+    shield_points = Column(Integer, default=100)
+    hull_points = Column(Integer, default=500)
+    extractor_level = Column(Integer, default=1)
+    weapon_slots = Column(Integer, default=2)
+    crew_slots = Column(Integer, default=4)
 
     # Relación
     owner = relationship("User", back_populates="ship")
