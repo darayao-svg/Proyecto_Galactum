@@ -10,8 +10,8 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.services.ship_rooms_service import crear_salas_iniciales
 from app.schemas.user import UserCreate
+from app.services import ship_service, ship_rooms_service # <-- ¡Importamos los servicios!
 
 from app.models.user import User
 from app.models.jugador import Jugador
@@ -85,36 +85,26 @@ def register_user(db: Session, payload: UserCreate) -> User:
         db.add(new_user)
         db.flush() # Necesario para obtener new_user.id
     
-        # 3. CREAR NAVE (SHIP)
-        # La nave está ligada directamente al ID del usuario (owner_id = user.id)
-        new_ship = Ship(
-            owner_id=new_user.id,
-            is_moving=False,
-            current_pos_x=0.0,
-            current_pos_y=0.0,
-            start_pos_x=0.0,
-            start_pos_y=0.0,
-            end_pos_x=0.0,
-            end_pos_y=0.0,
-            movement_start_time=None,
-            estimated_arrival_time=None
-        )
-        db.add(new_ship)
-        # Nota: No necesitamos flush aquí a menos que las siguientes entidades 
-        # dependan de new_ship.id (lo cual no parece ser el caso).
-    
-        # 4. CREAR JUGADOR (PLAYER)
+        # 3. CREAR JUGADOR (PLAYER)
         # El jugador está ligado al ID del usuario (user_id = user.id)
         new_player = Jugador(
             user_id=new_user.id,
             nickname=payload.username
         )
         db.add(new_player)
-        db.flush() # Necesario para obtener new_player.id
+        db.flush() # ¡CORRECCIÓN! Es necesario para que la relación user.jugador se actualice en la sesión.
     
-        # 5. CREAR SALAS INICIALES (SHIP ROOMS)
-        # Asumo que las salas dependen del ID del jugador (player_id)
-        crear_salas_iniciales(db, player_id=new_player.id) # type: ignore
+        # --- ORQUESTACIÓN DE SERVICIOS ---
+
+        # 4. CREAR NAVE (SHIP) llamando al servicio correspondiente
+        # El servicio se encarga de la lógica de la posición aleatoria.
+        ship_service.create_initial_ship(db, user_id=new_user.id)
+
+        # 5. CREAR SALAS INICIALES (SHIP ROOMS) llamando al servicio
+        # Corrección: Pasamos el user_id, como espera la función corregida.
+        ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id)
+
+        # --- FIN DE LA ORQUESTACIÓN ---
     
         # 6. CONFIRMAR TRANSACCIÓN
         db.commit()
