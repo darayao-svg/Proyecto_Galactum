@@ -13,6 +13,8 @@ class ShipStatus(BaseModel):
     currentPosition: Position
     startPosition: Optional[Position] = None
     endPosition: Optional[Position] = None
+    movementStartTime: Optional[datetime] = None
+    estimatedArrivalTime: Optional[datetime] = None
 
 class ShipsResponse(BaseModel):
     status: str = "success"

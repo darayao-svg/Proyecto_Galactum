@@ -7,7 +7,7 @@ from app.models.user import User
 from app.schemas.ship import ShipMoveRequest, ShipMoveResponse
 # --- ¡IMPORTACIÓN CORREGIDA! ---
 # Apuntamos a los nuevos servicios en la carpeta de servicios
-from app.services import ship_service
+from app.services import ship
 from app.services import ship_rooms_service # Importamos el servicio de salas
 from typing import List, Dict, Any # Para el tipado de la respuesta
 
@@ -30,7 +30,7 @@ async def move_ship(
     try:
         # 1. Llamamos a la función del nuevo servicio
         # Le pasamos la BD, el ID del usuario y la posición objetivo
-        real_data = ship_service.start_player_move(
+        real_data = ship.start_player_move(
             db=db,
             user_id=str(current_user.id),
             target_pos=move_request.targetPosition

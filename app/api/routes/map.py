@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.services.ship_service import get_all_ships
+from app.services.ship import get_all_ships
 from app.schemas.ship import ShipsResponse
 from app.services.auth import get_current_user
 from app.schemas.asteroid import AsteroidsResponse

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 
 # --- Importaciones de tu proyecto ---
 from app.db.dependencies import get_db # Para obtener una sesión de BD
-from app.services.ship_service import start_player_move # ¡La función que queremos probar!
+from app.services.ship import start_player_move # ¡La función que queremos probar!
 from app.schemas.ship import Position # El 'contrato' de la posición
 from app.models.user import User # Para buscar un usuario de prueba
 

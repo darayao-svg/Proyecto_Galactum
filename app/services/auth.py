@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.schemas.user import UserCreate
-from app.services import ship_service, ship_rooms_service # <-- ¡Importamos los servicios!
+from app.services import ship, ship_rooms_service # <-- ¡Importamos los servicios!
 
 from app.models.user import User
 from app.models.jugador import Jugador
@@ -98,7 +98,7 @@ def register_user(db: Session, payload: UserCreate) -> User:
 
         # 4. CREAR NAVE (SHIP) llamando al servicio correspondiente
         # El servicio se encarga de la lógica de la posición aleatoria.
-        ship_service.create_initial_ship(db, user_id=new_user.id)
+        ship.create_initial_ship(db, user_id=new_user.id)
 
         # 5. CREAR SALAS INICIALES (SHIP ROOMS) llamando al servicio
         # Corrección: Pasamos el user_id, como espera la función corregida.
