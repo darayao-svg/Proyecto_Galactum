@@ -1,4 +1,5 @@
 # app/services/ship.py
+import uuid
 from sqlalchemy.orm import Session, joinedload
 from app.models.ship import Ship
 from app.models.ship_rooms import ShipRoom
@@ -145,7 +146,7 @@ def get_player_ship_stats(db: Session, user_id: str):
 
     return final_stats
 
-def create_initial_ship(db: Session, user_id: "uuid.UUID") -> Ship:
+def create_initial_ship(db: Session, user_id: uuid.UUID) -> Ship:
     """
     Crea y registra una nueva nave para un usuario recién registrado.
     Esta función se llama durante el proceso de registro de usuario.
