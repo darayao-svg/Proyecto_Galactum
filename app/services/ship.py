@@ -1,4 +1,3 @@
-# app/services/ship.py
 import uuid
 from sqlalchemy.orm import Session, joinedload
 from app.models.ship import Ship
@@ -7,11 +6,11 @@ from app.models.tripulante import Tripulante
 from app.models.user import User
 from app.schemas.ship import ShipStatus, Position, ShipMoveResponseData
 import math
-import random # <-- ¡CORRECCIÓN! Importamos el módulo 'random'
+import random
 from datetime import datetime, timezone, timedelta
-from typing import cast
+from typing import cast, Optional
 
-# Límites del mapa definidos como constantes para fácil mantenimiento
+# Límites del mapa
 MAP_MIN_COORDINATE = -10000
 MAP_MAX_COORDINATE = 10000
 
@@ -19,30 +18,47 @@ def get_all_ships(db: Session):
     """
     Obtiene el estado de todas las naves para el mapa.
     """
-    # Usamos joinedload para cargar las relaciones en una sola consulta y evitar el problema N+1
     ships = db.query(Ship).options(
         joinedload(Ship.owner).joinedload(User.jugador)
     ).all()
 
     result = []
     for ship in ships:
-        # Accedemos a la relación ya cargada, sin hacer nuevas consultas
         nickname = "unknown"
         if ship.owner and ship.owner.jugador:
             nickname = ship.owner.jugador.nickname
 
-        current_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)  # type: ignore
-        start_pos = Position(x=ship.start_pos_x, y=ship.start_pos_y) if ship.start_pos_x is not None and ship.start_pos_y is not None else None  # type: ignore
-        end_pos = Position(x=ship.end_pos_x, y=ship.end_pos_y) if ship.end_pos_x is not None and ship.end_pos_y is not None else None  # type: ignore
+        # Castings para evitar errores de linter
+        c_pos_x = cast(float, ship.current_pos_x)
+        c_pos_y = cast(float, ship.current_pos_y)
+        
+        current_pos = Position(x=c_pos_x, y=c_pos_y)
+        
+        # Validación segura de start_pos
+        start_pos = None
+        if ship.start_pos_x is not None and ship.start_pos_y is not None:
+            start_pos = Position(
+                x=cast(float, ship.start_pos_x), 
+                y=cast(float, ship.start_pos_y)
+            )
+
+        # Validación segura de end_pos
+        end_pos = None
+        if ship.end_pos_x is not None and ship.end_pos_y is not None:
+            end_pos = Position(
+                x=cast(float, ship.end_pos_x), 
+                y=cast(float, ship.end_pos_y)
+            )
+
         result.append(
             ShipStatus(
                 username=nickname,
-                isMoving=ship.is_moving,  # type: ignore
+                isMoving=cast(bool, ship.is_moving),
                 currentPosition=current_pos,
                 startPosition=start_pos,
                 endPosition=end_pos,
-                movementStartTime=ship.movement_start_time, # type: ignore
-                estimatedArrivalTime=ship.estimated_arrival_time # type: ignore
+                movementStartTime=cast(Optional[datetime], ship.movement_start_time),
+                estimatedArrivalTime=cast(Optional[datetime], ship.estimated_arrival_time)
             )
         )
     return result
@@ -53,40 +69,99 @@ def start_player_move(
     target_pos: Position
 ) -> ShipMoveResponseData:
     """
-    Inicia el movimiento de la nave de un jugador y actualiza la base de datos.
+    Inicia el movimiento de la nave y corrige la posición inicial.
+    Usa 'cast' explícito para satisfacer al linter (Pylance).
     """
     
-    # 0. Clamp coordinates to map limits
+    # 0. Limitar coordenadas (Clamp)
     clamped_x = max(MAP_MIN_COORDINATE, min(target_pos.x, MAP_MAX_COORDINATE))
     clamped_y = max(MAP_MIN_COORDINATE, min(target_pos.y, MAP_MAX_COORDINATE))
     
     clamped_target_pos = Position(x=clamped_x, y=clamped_y)
 
-    # 1. Encontrar la nave del jugador actual
+    # 1. Encontrar la nave
     ship = db.query(Ship).filter(Ship.owner_id == user_id).first()
     
     if not ship:
         raise Exception("Ship not found for the current user")
-        
-    # 2. Definir variables de inicio del movimiento
-    start_time = datetime.now(timezone.utc)
-    start_pos = Position(x=ship.current_pos_x, y=ship.current_pos_y)  # type: ignore
     
-    # 3. Calcular distancia y duración del viaje
+    # --- CORRECCIÓN DE POSICIÓN PREVIA (Linter Friendly) ---
+    now = datetime.now(timezone.utc)
+
+    # 1. Extraemos y casteamos las variables primero.
+    mov_start = cast(Optional[datetime], ship.movement_start_time)
+    est_arrival = cast(Optional[datetime], ship.estimated_arrival_time)
+    start_x = cast(Optional[float], ship.start_pos_x)
+    end_x = cast(Optional[float], ship.end_pos_x)
+    start_y = cast(Optional[float], ship.start_pos_y)
+    end_y = cast(Optional[float], ship.end_pos_y)
+    is_moving = cast(bool, ship.is_moving)
+
+    # Ahora el IF usa variables tipadas correctamente
+    if mov_start and est_arrival and start_x is not None and end_x is not None:
+        
+        # --- FIX: Normalizar zonas horarias ---
+        if est_arrival.tzinfo is None:
+            est_arrival = est_arrival.replace(tzinfo=timezone.utc)
+
+        if mov_start.tzinfo is None:
+            mov_start = mov_start.replace(tzinfo=timezone.utc)
+        # --------------------------------------
+
+        # CASO 1: Viaje anterior finalizado
+        if now >= est_arrival:
+            # Agregamos # type: ignore para calmar a Pylance
+            ship.current_pos_x = end_x  # type: ignore
+            ship.current_pos_y = end_y  # type: ignore
+            ship.is_moving = False      # type: ignore
+        
+        # CASO 2: Cambio de rumbo en vuelo
+        elif is_moving:
+            total_duration = (est_arrival - mov_start).total_seconds()
+            elapsed_time = (now - mov_start).total_seconds()
+            
+            s_y = cast(float, start_y)
+            e_y = cast(float, end_y)
+
+            if total_duration > 0:
+                progress = elapsed_time / total_duration
+                current_x = start_x + (end_x - start_x) * progress
+                current_y = s_y + (e_y - s_y) * progress
+                
+                # Agregamos # type: ignore aquí también
+                ship.current_pos_x = current_x  # type: ignore
+                ship.current_pos_y = current_y  # type: ignore
+    
+    # -------------------------------------
+
+    # 2. Definir nuevo viaje
+    start_time = now
+    
+    # Usamos la posición actual corregida (y casteada) como punto de partida
+    current_x_val = cast(float, ship.current_pos_x)
+    current_y_val = cast(float, ship.current_pos_y)
+    
+    start_pos = Position(x=current_x_val, y=current_y_val)
+    
+    # 3. Calcular distancia
     distance = math.sqrt(
         (clamped_target_pos.x - start_pos.x) ** 2 + 
         (clamped_target_pos.y - start_pos.y) ** 2
     )
     
     if distance == 0:
-        raise Exception("Already at target position or invalid distance")
+        pass 
 
-    duration_seconds = distance / ship.speed  # type: ignore
+    # Evitar división por cero en speed
+    speed_val = cast(Optional[float], ship.speed)
+    speed = float(speed_val) if speed_val and speed_val > 0 else 1.0
     
-    # 4. Calcular la hora estimada de llegada (ETA)
-    eta = start_time + timedelta(seconds=duration_seconds)  # type: ignore
+    duration_seconds = distance / speed
+    
+    # 4. Calcular ETA
+    eta = start_time + timedelta(seconds=duration_seconds)
 
-    # 5. Actualizar todas las columnas de la nave en la BD
+    # 5. Guardar en BD (Estas líneas ya tenían el ignore y funcionaban bien)
     ship.is_moving = True  # type: ignore
     ship.start_pos_x = start_pos.x  # type: ignore
     ship.start_pos_y = start_pos.y  # type: ignore
@@ -95,35 +170,29 @@ def start_player_move(
     ship.movement_start_time = start_time  # type: ignore
     ship.estimated_arrival_time = eta  # type: ignore
 
-    # TODO: Notificar al Servidor de Sistema Solar (SSS)
-    # Aquí se enviaría una solicitud HTTP o un mensaje (ej. RabbitMQ, gRPC) al SSS
-    # informando del nuevo destino y ETA del jugador.
-    
     db.commit()
     db.refresh(ship)
 
-    # 6. Preparar y devolver los datos para la respuesta de la API
+    # 6. Retorno de datos
     return ShipMoveResponseData(
-        startPosition=start_pos,       # <--- LÍNEA AGREGADA
+        startPosition=start_pos,
         endPosition=clamped_target_pos,
-        movementStartTime=start_time,  # <--- LÍNEA AGREGADA
+        movementStartTime=start_time,
         estimatedArrivalTime=eta
     )
 
 def get_player_ship_stats(db: Session, user_id: str):
     """
-    Calcula las estadísticas finales de la nave de un jugador, aplicando bonificaciones.
+    Calcula estadísticas finales de la nave.
     """
-    # 1. Cargar datos base
     ship = db.query(Ship).filter(Ship.owner_id == user_id).first()
     if not ship:
-        raise Exception("Nave no encontrada para el usuario.")
+        raise Exception("Nave no encontrada")
 
     player_id = ship.owner.jugador.id # type: ignore
     rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_id).all()
     crew = db.query(Tripulante).filter(Tripulante.player_id == player_id).all()
 
-    # 2. Iniciar con las estadísticas base de la nave
     final_stats = {
         "cargo_capacity": ship.cargo_capacity,
         "shield_points": ship.shield_points,
@@ -134,55 +203,34 @@ def get_player_ship_stats(db: Session, user_id: str):
         "crew_slots": ship.crew_slots
     }
 
-    # 3. Aplicar bonificaciones de salas
-    # (Ejemplo: cada nivel de la Fábrica aumenta la capacidad de carga en 100)
     for room in rooms:
         if cast(str, room.room_id) == "Fabrica":
             final_stats["cargo_capacity"] += cast(int, room.level) * 100
 
-    # 4. Aplicar bonificaciones de tripulación asignada
-    # (Ejemplo: un tripulante asignado a la sala de motores (ID 1) aumenta la velocidad)
     for member in crew:
-        if cast(int, member.slot_id) == 1: # Asumimos que la sala de motores tiene slot_id 1
-            # Cada punto de agilidad del tripulante asignado aumenta la velocidad en 5
+        if cast(int, member.slot_id) == 1: 
             final_stats["impulse_speed"] += cast(int, member.agilidad) * 5
         
-        # (Ejemplo: un tripulante en la sala de minería (ID 2) aumenta el nivel del extractor)
         if cast(int, member.slot_id) == 2:
-            # Cada 10 puntos de percepción aumentan el nivel del extractor en 1
             final_stats["extractor_level"] += cast(int, member.percepcion) // 10
 
     return final_stats
 
 def create_initial_ship(db: Session, user_id: uuid.UUID) -> Ship:
     """
-    Crea y registra una nueva nave para un usuario recién registrado.
-    Esta función se llama durante el proceso de registro de usuario.
-
-    Args:
-        db (Session): La sesión de base de datos activa.
-        user_id (uuid.UUID): El ID del usuario propietario de la nave.
-
-    Returns:
-        Ship: La instancia del modelo Ship recién creada.
+    Crea nave inicial.
     """
-    # 1. Generar coordenadas aleatorias para la posición inicial
     initial_pos_x = float(random.randint(MAP_MIN_COORDINATE, MAP_MAX_COORDINATE))
     initial_pos_y = float(random.randint(MAP_MIN_COORDINATE, MAP_MAX_COORDINATE))
 
-    # 2. Crear la instancia del modelo Ship con los valores iniciales
     new_ship = Ship(
         owner_id=user_id,
         is_moving=False,
         current_pos_x=initial_pos_x,
         current_pos_y=initial_pos_y,
-        # Asignamos la posición inicial también a start_pos para consistencia
         start_pos_x=initial_pos_x,
         start_pos_y=initial_pos_y,
-        # El resto de campos (end_pos, speed, etc.) se dejan en su valor por defecto.
     )
 
-    # 3. Añadir la nueva nave a la sesión de la base de datos.
-    # El 'commit' se debe manejar en el servicio que orquesta la transacción (ej. auth_service).
     db.add(new_ship)
     return new_ship
