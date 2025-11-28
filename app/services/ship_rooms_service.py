@@ -35,20 +35,13 @@ def crear_salas_iniciales(db: Session, user_id: "uuid.UUID"):
         db.add(db_room)
     # El commit se maneja en el servicio que orquesta la transacción (ej. auth_service).
 
-def obtener_info_salas(db: Session, user_id: "uuid.UUID"):
+def obtener_info_salas(db: Session, player_id: int):
     """
     Obtiene la información de las salas de un jugador, incluyendo el costo de la próxima mejora.
-    Corrección: Ahora recibe user_id (UUID) y busca el jugador correspondiente.
+    Recibe el ID numérico del jugador directamente.
     """
-    # Buscamos al jugador a través del user_id que viene del token JWT.
-    user = db.query(User).filter(User.id == user_id).one_or_none()
-
-    if not user or not user.jugador:
-        return []
-
-    player_id = user.jugador.id
     player_rooms = db.query(ShipRoom).filter(ShipRoom.player_id == player_id).all()
-    
+ 
     response_data = []
     for room in player_rooms:
         # 2. Para cada sala, calculamos cuál sería el siguiente nivel.
@@ -73,20 +66,12 @@ def obtener_info_salas(db: Session, user_id: "uuid.UUID"):
     return response_data
 
 
-def upgrade_room(db: Session, user_id: "uuid.UUID", room_id: str):
+def upgrade_room(db: Session, player_id: int, room_id: str):
     """
     Lógica de negocio para mejorar una sala. Es una operación transaccional.
-    Corrección: Ahora recibe user_id (UUID) y busca el jugador correspondiente.
+    Recibe el ID numérico del jugador directamente.
     """
-    # Buscamos al jugador a través del user_id que viene del token JWT.
-    user = db.query(User).filter(User.id == user_id).one_or_none()
-
-    if not user or not user.jugador:
-        raise Exception("Perfil de jugador no encontrado para este usuario.")
-
-    player_id = user.jugador.id
-
-    # Buscar la sala actual del jugador usando el ID numérico del jugador.
+    # 1. Buscar la sala actual del jugador.
     room_to_upgrade = db.query(ShipRoom).filter(
         ShipRoom.player_id == player_id,
         ShipRoom.room_id == room_id
