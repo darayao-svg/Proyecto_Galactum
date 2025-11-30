@@ -8,7 +8,7 @@ class Inventory(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     player_id = Column(Integer, ForeignKey('jugadores.id'), nullable=False)
-    resource_id = Column(String, nullable=False) # Ej: "Roderitium", "Kliptium", "Ore"
+    resource_id = Column(Integer, nullable=False)
     quantity = Column(Integer, default=0, nullable=False)
     
     jugador = relationship("Jugador", back_populates="inventory")

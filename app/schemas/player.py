@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 
 class InventoryItem(BaseModel):
-    resource_id: str
+    resource_id: int
     quantity: int
 
     class Config:
