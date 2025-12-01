@@ -5,9 +5,11 @@ class Position(BaseModel):
     y: float
 
 class AsteroidStatus(BaseModel):
-    asteroidId: str
+    asteroid: str
     position: Position
     resourceType: str
+    cantidad_restante: int
+
 
 class AsteroidsResponse(BaseModel):
     status: str = "success"
