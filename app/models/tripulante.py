@@ -14,14 +14,14 @@ class Tripulante(Base):
     slot_id = Column(Integer, ForeignKey("ship_rooms.id"), nullable=True)
     
     # Nuevos campos para XP y Estadísticas
-    current_xp = Column(Integer, default=0, nullable=False)
-    next_level_xp = Column(Integer, default=100, nullable=False)
-    inteligencia = Column(Integer, default=5, nullable=False)
-    resistencia = Column(Integer, default=5, nullable=False)
-    carisma = Column(Integer, default=5, nullable=False)
-    percepcion = Column(Integer, default=5, nullable=False)
-    suerte = Column(Integer, default=5, nullable=False)
-    agilidad = Column(Integer, default=5, nullable=False)
+    #current_xp = Column(Integer, default=0, nullable=False)
+    #next_level_xp = Column(Integer, default=100, nullable=False)
+    #inteligencia = Column(Integer, default=5, nullable=False)
+    #resistencia = Column(Integer, default=5, nullable=False)
+    #carisma = Column(Integer, default=5, nullable=False)
+    #percepcion = Column(Integer, default=5, nullable=False)
+    #suerte = Column(Integer, default=5, nullable=False)
+    #agilidad = Column(Integer, default=5, nullable=False)
 
     jugador = relationship("Jugador", back_populates="tripulantes")
     room = relationship("ShipRoom")

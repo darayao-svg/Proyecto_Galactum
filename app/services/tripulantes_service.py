@@ -33,8 +33,8 @@ def obtener_tripulantes(db: Session, player_id: int):
             "nivel": tripulante.nivel,
             "especializacion": tripulante.especializacion,
             "slot_id": tripulante.slot_id,
-            "stats_base": {"inteligencia": tripulante.inteligencia, "resistencia": tripulante.resistencia, "carisma": tripulante.carisma, "percepcion": tripulante.percepcion, "suerte": tripulante.suerte, "agilidad": tripulante.agilidad},
-            "stats_calculadas": {"inteligencia": tripulante.inteligencia + bonus_por_nivel, "resistencia": tripulante.resistencia + bonus_por_nivel} # Ejemplo
+            #"stats_base": {"inteligencia": tripulante.inteligencia, "resistencia": tripulante.resistencia, "carisma": tripulante.carisma, "percepcion": tripulante.percepcion, "suerte": tripulante.suerte, "agilidad": tripulante.agilidad},
+            #"stats_calculadas": {"inteligencia": tripulante.inteligencia + bonus_por_nivel, "resistencia": tripulante.resistencia + bonus_por_nivel} # Ejemplo
         })
     return response
 
