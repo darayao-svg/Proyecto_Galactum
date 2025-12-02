@@ -7,6 +7,7 @@ from app.models.user import User
 from app.db.dependencies import get_db
 from app.services import ship_rooms_service,ship
 from app.services import recursos_service
+from app.models.crafting import catalogo_items
 from app.schemas.player import InventoryResponse
 
 # Definimos el router para este módulo
@@ -72,10 +73,26 @@ def get_player_resources(
     if not current_user.jugador:
         raise HTTPException(status_code=404, detail="Jugador no encontrado para este usuario.")
 
-    # Llamamos al servicio para obtener el inventario desde la BD
-    inventario = recursos_service.obtener_inventario_jugador(db, player_id=current_user.jugador.id)
-    
-    return {"recursos": inventario}
+    # Importamos el modelo de inventario aquí para evitar importaciones circulares a nivel de módulo.
+    from app.models.inventory import Inventory
+
+    # Realizamos una única consulta con JOIN para obtener todos los datos de una vez.
+    # Esto es más eficiente y robusto que hacer múltiples consultas.
+    inventario_con_detalles = db.query(
+        Inventory.resource_id,
+        Inventory.quantity,
+        catalogo_items.nombre,
+        catalogo_items.descripcion
+    ).join(
+        catalogo_items, Inventory.resource_id == catalogo_items.id
+    ).filter(
+        Inventory.player_id == current_user.jugador.id
+    ).all()
+
+    # Convertimos la lista de resultados (que son como tuplas) en una lista de diccionarios.
+    inventario_enriquecido = [dict(item._mapping) for item in inventario_con_detalles]
+
+    return InventoryResponse(recursos=inventario_enriquecido)
 
 # --- Obtener lista de amigos o aliados ---
 @router.get("/friends", name="Get player friends")

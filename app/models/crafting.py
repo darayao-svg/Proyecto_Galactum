@@ -1,6 +1,16 @@
-# app/models/crafting.py
-from sqlalchemy import Column, String, Text, JSON
+from sqlalchemy import Column, String, Text, JSON, Integer
 from ..db.base import Base
+
+class catalogo_items(Base):
+    __tablename__ = "catalogo_items"
+    # Añadimos esta línea para ser explícitos sobre dónde buscar la tabla.
+    # Si usas un schema diferente a 'public', cámbialo aquí.
+    __table_args__ = {'schema': 'public'}
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, nullable=False)
+    descripcion = Column(Text)
+    tipo = Column(String, nullable=False) # ej: 'recurso', 'componente', 'equipamiento'
 
 class Recipe(Base):
     __tablename__ = "recipes"
