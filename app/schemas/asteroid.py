@@ -1,3 +1,4 @@
+# app\schemas\asteroid.py
 from pydantic import BaseModel
 
 class Position(BaseModel):
@@ -9,6 +10,7 @@ class AsteroidStatus(BaseModel):
     position: Position
     resourceType: str
     cantidad_restante: int
+    cantidad_maxima: int
 
 
 class AsteroidsResponse(BaseModel):

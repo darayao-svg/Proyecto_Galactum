@@ -1,25 +1,35 @@
 # app/models/asteroid.py
-from sqlalchemy import Column, String, Float, Integer
+from sqlalchemy import Column, String, Float, Integer, DateTime
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
+from typing import Optional
+from sqlalchemy import Boolean
+import uuid
 
 class Asteroid(Base):
     __tablename__ = "asteroids"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     
-    # CORRECCIÓN 1: "asteroid_id" en lugar de "asteroidId"
+    # El ID lógico del juego (ej: "ast_1234")
     asteroid: Mapped[str] = mapped_column("asteroid", String, unique=True, index=True, nullable=False)
     
-    # CORRECCIÓN 2: Mapear "pos_x" de la BD al atributo "position_x" de Python
+    # Coordenadas
     position_x: Mapped[float] = mapped_column("pos_x", Float, nullable=False)
-    
-    # CORRECCIÓN 3: Mapear "pos_y" de la BD al atributo "position_y" de Python
     position_y: Mapped[float] = mapped_column("pos_y", Float, nullable=False)
     
-    # CORRECCIÓN 4: "resource_type" en lugar de "resourceType"
+    # Recursos
     resource_type: Mapped[str] = mapped_column("resource_type", String, nullable=False)
-
     cantidad_restante: Mapped[int] = mapped_column("cantidad_restante", Integer, nullable=False, default=3)
 
-    #Incorporar variable de dureza para que cambie el tiempo de minado entre asteroides.
+    # --- AGREGADOS NECESARIOS PARA LA LÓGICA DE JUEGO ---
+    
+    # Cantidad máxima original (para saber cuánto ponerle al revivirlo)
+    cantidad_maxima: Mapped[int] = mapped_column("cantidad_maxima", Integer, default=100)
+    
+    # Estado de vida: True = Visible, False = Destruido (Cooldown)
+    is_active: Mapped[bool] = mapped_column("is_active", Boolean, default=True)
+    
+    # Fecha de resurrección (Solo si is_active es False)
+    reaparecer_en: Mapped[Optional[datetime]] = mapped_column("reaparecer_en", DateTime, nullable=True)
