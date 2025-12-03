@@ -1,5 +1,5 @@
 # app/models/asteroid.py
-from sqlalchemy import Column, String, Float, Integer, DateTime
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey
 from app.db.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
@@ -33,3 +33,11 @@ class Asteroid(Base):
     
     # Fecha de resurrección (Solo si is_active es False)
     reaparecer_en: Mapped[Optional[datetime]] = mapped_column("reaparecer_en", DateTime, nullable=True)
+
+    # --- AGREGADOS PARA EL BLOQUEO DE MINADO ---
+
+    # Quién lo está minando actualmente
+    mined_by_id: Mapped[Optional[str]] = mapped_column("mined_by_id", String, ForeignKey("users.id"), nullable=True)
+
+    # Cuándo termina el minado
+    mining_finish_at: Mapped[Optional[datetime]] = mapped_column("mining_finish_at", DateTime, nullable=True)

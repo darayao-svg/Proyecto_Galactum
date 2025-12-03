@@ -1,28 +1,50 @@
 # app/api/routes/mining.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.db.dependencies import get_db
 from app.services.auth import get_current_user
 from app.models.user import User
-from app.services import job_queue_service
-from app.schemas.crafting import JobResponse
+from app.services import mining_service
+from app.schemas.mining import MiningStartRequest, MiningInfoResponse, MiningClaimResponse
 
-router = APIRouter(prefix="/api/v1/mine", tags=["Mining"])
+# Se agrupan las rutas bajo el prefijo /mining
+router = APIRouter(prefix="/api/v1/mining", tags=["Mining"])
 
-@router.post("/start/{asteroid_id}", response_model=JobResponse)
-def start_mining(
-    asteroid_id: str,
+@router.post("/start", response_model=MiningInfoResponse, status_code=status.HTTP_200_OK)
+def start_mining_endpoint(
+    request: MiningStartRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Inicia un trabajo de minería en un asteroide específico.
+    1. POST /start: Usa MiningStartRequest y devuelve MiningInfoResponse.
+
+    Inicia el proceso de minado en un asteroide, bloqueándolo para el usuario.
+    Devuelve la información sobre el tiempo de finalización.
     """
-    try:
-        job = job_queue_service.start_mining_job(db, str(current_user.id), asteroid_id)
-        db.commit()
-        return {"status": "success", "job_id": str(job.id), "completion_time": job.completion_time}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    mining_info = mining_service.start_mining(
+        db=db,
+        user=current_user,
+        asteroid_id=request.asteroid_id
+    )
+    return mining_info
+
+@router.post("/claim", response_model=MiningClaimResponse, status_code=status.HTTP_200_OK)
+def claim_mining_rewards_endpoint(
+    request: MiningStartRequest, # Se reutiliza el request para obtener el asteroid_id
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    2. POST /claim: Usa un body simple con asteroid_id y devuelve MiningClaimResponse.
+
+    Reclama los recursos una vez que el tiempo de minado ha concluido.
+    Verifica que el tiempo se haya cumplido y que el reclamante sea el minero original.
+    """
+    claim_response = mining_service.confirma_mining(
+        db=db,
+        user=current_user,
+        asteroid_id=request.asteroid_id
+    )
+    return claim_response
