@@ -32,7 +32,7 @@ class RecipeResponse(BaseModel):
 
 # --- LEGACY / OTROS ---
 # Actualizamos también estos IDs a int para mantener consistencia 
-# con tu tabla catalogo_items.
+# con tu tabla CatalogoItem.
 
 class JobResponse(BaseModel):
     status: str

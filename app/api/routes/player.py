@@ -7,7 +7,7 @@ from app.models.user import User
 from app.db.dependencies import get_db
 from app.services import ship_rooms_service,ship
 from app.services import recursos_service
-from app.models.crafting import catalogo_items
+from app.models.crafting import CatalogoItem
 from app.schemas.player import InventoryResponse
 
 # Definimos el router para este módulo
@@ -81,10 +81,10 @@ def get_player_resources(
     inventario_con_detalles = db.query(
         Inventory.resource_id,
         Inventory.quantity,
-        catalogo_items.nombre,
-        catalogo_items.descripcion
+        CatalogoItem.nombre,
+        CatalogoItem.descripcion
     ).join(
-        catalogo_items, Inventory.resource_id == catalogo_items.id
+        CatalogoItem, Inventory.resource_id == CatalogoItem.id
     ).filter(
         Inventory.player_id == current_user.jugador.id
     ).all()
