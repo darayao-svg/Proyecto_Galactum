@@ -5,6 +5,7 @@ import random
 
 from app.models.asteroid import Asteroid
 from app.schemas.asteroid import AsteroidStatus, Position
+from app.models.crafting import CatalogoItem
 
 # Configuración del mapa (mismo que en el script de seed)
 MAP_LIMIT = 10000
@@ -50,10 +51,15 @@ def get_all_asteroids(db: Session) -> List[AsteroidStatus]:
     recover_asteroids(db)
 
     # 2. Consultar solo los activos
-    asteroids_from_db = db.query(Asteroid).filter(Asteroid.is_active == True).all()
+    #asteroids_from_db = db.query(Asteroid).filter(Asteroid.is_active == True).all()
+    asteroids_from_db = db.query(Asteroid, CatalogoItem.nombre)\
+        .join(CatalogoItem, Asteroid.resource_id == CatalogoItem.id)\
+        .filter(Asteroid.is_active == True)\
+        .all()
+    
     
     asteroids_list = []
-    for ast in asteroids_from_db:
+    for ast, nombre_item in asteroids_from_db:
         # Mapeo manual seguro con cast
         asteroids_list.append(AsteroidStatus(
             asteroid=cast(str, ast.asteroid),
@@ -61,9 +67,10 @@ def get_all_asteroids(db: Session) -> List[AsteroidStatus]:
                 x=cast(float, ast.position_x), 
                 y=cast(float, ast.position_y)
             ),
-            resourceType=cast(str, ast.resource_type),
+            resource_id=cast(int, ast.resource_id),
             cantidad_restante=cast(int, ast.cantidad_restante),
-            cantidad_maxima=cast(int, ast.cantidad_maxima)
+            cantidad_maxima=cast(int, ast.cantidad_maxima),
+            resource_name=cast(str, nombre_item)
         ))
     
     return asteroids_list

@@ -8,9 +8,11 @@ class Position(BaseModel):
 class AsteroidStatus(BaseModel):
     asteroid: str
     position: Position
-    resourceType: str
+    resource_id: int
+    resource_name: str
     cantidad_restante: int
     cantidad_maxima: int
+    
 
 
 class AsteroidsResponse(BaseModel):
