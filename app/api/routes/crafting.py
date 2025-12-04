@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Any, Dict
+from typing import List, Any, Dict, cast # <--- 1. Importamos cast
 
 from app.db.dependencies import get_db
 from app.services.auth import get_current_user
@@ -45,7 +45,8 @@ def craft_item_endpoint(
         resultado = crafting_service.craftear_recurso(
             db=db, 
             jugador_id=current_user.jugador.id, 
-            item_resultado_id=peticion.item_id
+            item_resultado_id=peticion.item_id,
+            cantidad=peticion.quantity
         )
         
         # Commit de la transacción
@@ -68,7 +69,7 @@ def craft_item_endpoint(
     except Exception as e:
         db.rollback()
         print(f"Error crítico en crafting: {e}") 
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error interno del servidor.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error interno: {str(e)}")
 
 # -----------------------------------------------------------------------------
 # 2. ENDPOINTS DE INFORMACIÓN (RECETAS DISPONIBLES)
@@ -91,17 +92,20 @@ def _obtener_recetas_por_tipo(db: Session, tipos_item: List[str]) -> List[Recipe
 
         # Si tiene ingredientes, lo agregamos a la lista de "Recetas Visibles"
         if ingredientes_db:
+            # <--- SOLUCIÓN AQUÍ: Usamos cast() --->
+            # Aunque SQLAlchemy sabe que es un int, el linter ve una 'Column'.
+            # cast(int, variable) fuerza al linter a verlo como entero.
             ingredientes_format = [
                 RecipeIngredient(
-                    item_id=ing.item_requerido_id, # Asumiendo que tu schema ahora usa int
-                    quantity=ing.cantidad
+                    item_id=cast(int, ing.item_requerido_id), 
+                    quantity=cast(int, ing.cantidad)
                 ) for ing in ingredientes_db
             ]
 
             lista_respuesta.append(RecipeResponse(
-                id=item.id,          # ID del item resultante
-                name=item.nombre,
-                description=item.descripcion or "",
+                id=cast(int, item.id), # También podemos usarlo aquí por seguridad
+                name=cast(str, item.nombre),
+                description=cast(str, item.descripcion or ""),
                 ingredients=ingredientes_format
             ))
             
