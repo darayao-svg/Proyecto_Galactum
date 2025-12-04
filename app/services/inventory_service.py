@@ -1,6 +1,8 @@
 # app/services/inventory_service.py
 from sqlalchemy.orm import Session
 from app.models.player_equipment import PlayerEquipment
+from app.models.inventory import Inventory # Importamos el modelo de inventario de recursos
+
 
 def obtener_equipo(db: Session, player_id: int):
     """
@@ -29,3 +31,21 @@ def agregar_equipo(db: Session, player_id: int, item_id: str, quantity: int):
             quantity=quantity
         )
         db.add(new_player_item)
+
+def create_starter_pack(db: Session, player_id: int):
+    """
+    Crea el inventario inicial de recursos para un nuevo jugador usando una inserción masiva.
+    """
+    starter_items = [
+        # Supervivencia (Crafteo de Comida)
+        {"player_id": player_id, "resource_id": 3, "quantity": 10},  # Material Orgánico
+        {"player_id": player_id, "resource_id": 7, "quantity": 10},  # H2O
+        # Energía (Crafteo de Batería)
+        {"player_id": player_id, "resource_id": 4, "quantity": 10},  # Litium
+        {"player_id": player_id, "resource_id": 5, "quantity": 10},  # Copper
+        # Combustible
+        {"player_id": player_id, "resource_id": 1, "quantity": 20},  # Kliptium
+    ]
+    
+    # Usamos bulk_insert_mappings para una inserción eficiente de todos los items.
+    db.bulk_insert_mappings(Inventory, starter_items) # type: ignore

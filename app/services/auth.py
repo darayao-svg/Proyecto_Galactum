@@ -11,7 +11,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.schemas.user import UserCreate
-from app.services import ship, ship_rooms_service # <-- ¡Importamos los servicios!
+from app.services import ship, ship_rooms_service, inventory_service # <-- ¡Importamos los servicios!
 
 from app.models.user import User
 from app.models.jugador import Jugador
@@ -102,6 +102,9 @@ def register_user(db: Session, payload: UserCreate) -> User:
         # 5. CREAR SALAS INICIALES (SHIP ROOMS) llamando al servicio
         # Corrección: Pasamos el user_id, como espera la función corregida.
         ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id) # type: ignore
+
+        # 6. CREAR INVENTARIO INICIAL (STARTER PACK)
+        inventory_service.create_starter_pack(db, player_id=new_player.id)
 
         # --- FIN DE LA ORQUESTACIÓN ---
     
