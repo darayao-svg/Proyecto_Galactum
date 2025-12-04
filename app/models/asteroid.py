@@ -20,7 +20,7 @@ class Asteroid(Base):
     position_y: Mapped[float] = mapped_column("pos_y", Float, nullable=False)
     
     # Recursos
-    resource_type: Mapped[str] = mapped_column("resource_type", String, nullable=False)
+    resource_id: Mapped[int] = mapped_column(Integer,ForeignKey("catalogo_items.id"), nullable=False)
     cantidad_restante: Mapped[int] = mapped_column("cantidad_restante", Integer, nullable=False, default=3)
 
     # --- AGREGADOS NECESARIOS PARA LA LÓGICA DE JUEGO ---

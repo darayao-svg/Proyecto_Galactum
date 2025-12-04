@@ -5,7 +5,7 @@ from typing import List, Any, Dict, cast # <--- 1. Importamos cast
 from app.db.dependencies import get_db
 from app.services.auth import get_current_user
 from app.models.user import User
-from app.models.crafting import RecetaCrafteo, catalogo_items 
+from app.models.crafting import RecetaCrafteo, CatalogoItem 
 
 # --- SERVICIOS ---
 from app.services import crafting_service, inventory_service 
@@ -80,7 +80,7 @@ def _obtener_recetas_por_tipo(db: Session, tipos_item: List[str]) -> List[Recipe
     Función auxiliar para buscar items de ciertos tipos y formatearlos como recetas.
     """
     # 1. Buscar items en el catálogo que coincidan con los tipos solicitados
-    items_catalogo = db.query(catalogo_items).filter(catalogo_items.tipo.in_(tipos_item)).all()
+    items_catalogo = db.query(CatalogoItem).filter(CatalogoItem.tipo.in_(tipos_item)).all()
     
     lista_respuesta = []
 

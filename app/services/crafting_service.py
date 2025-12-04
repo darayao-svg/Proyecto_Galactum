@@ -1,6 +1,6 @@
 # app/services/crafting_service.py
 from sqlalchemy.orm import Session
-from app.models.crafting import RecetaCrafteo, catalogo_items
+from app.models.crafting import RecetaCrafteo, CatalogoItem
 # Ya no necesitamos importar ShipRoom ni cast
 from app.services.recursos_service import verificar_y_consumir_recursos, agregar_recursos_jugador
 
@@ -10,11 +10,11 @@ def craftear_recurso(db: Session, jugador_id: int, item_resultado_id: int, canti
     Valida la existencia del item y la receta, consume los materiales y entrega el producto.
     
     Args:
-        item_resultado_id: ID del item que se desea fabricar (catalogo_items.id).
+        item_resultado_id: ID del item que se desea fabricar (CatalogoItem.id).
     """
     
     # 1. VALIDAR QUE EL ITEM EXISTE (Opcional, pero recomendado para mensajes de error claros)
-    item_obj = db.query(catalogo_items).filter(catalogo_items.id == item_resultado_id).first()
+    item_obj = db.query(CatalogoItem).filter(CatalogoItem.id == item_resultado_id).first()
     if not item_obj:
         raise ValueError(f"El item con ID {item_resultado_id} no existe en el catálogo.")
 
