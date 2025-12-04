@@ -32,7 +32,7 @@ def agregar_equipo(db: Session, player_id: int, item_id: str, quantity: int):
         )
         db.add(new_player_item)
 
-def create_starter_pack(db: Session, player_id: int):
+def crear_inventario_inicial(db: Session, player_id: int):
     """
     Crea el inventario inicial de recursos para un nuevo jugador usando una inserción masiva.
     """

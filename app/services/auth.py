@@ -104,7 +104,7 @@ def register_user(db: Session, payload: UserCreate) -> User:
         ship_rooms_service.crear_salas_iniciales(db, user_id=new_user.id) # type: ignore
 
         # 6. CREAR INVENTARIO INICIAL (STARTER PACK)
-        inventory_service.create_starter_pack(db, player_id=new_player.id)
+        inventory_service.crear_inventario_inicial(db, player_id=new_player.id)
 
         # --- FIN DE LA ORQUESTACIÓN ---
     
