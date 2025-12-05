@@ -11,15 +11,13 @@ from app.schemas.mining import MiningStartRequest, MiningInfoResponse, MiningCla
 # Se agrupan las rutas bajo el prefijo /mining
 router = APIRouter(prefix="/api/v1/mining", tags=["Mining"])
 
-@router.post("/start", response_model=MiningInfoResponse, status_code=status.HTTP_200_OK)
-def start_mining_endpoint(
+@router.post("/iniciar", response_model=MiningInfoResponse, status_code=status.HTTP_200_OK, response_model_by_alias=True)
+def iniciar_minado(
     request: MiningStartRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    1. POST /start: Usa MiningStartRequest y devuelve MiningInfoResponse.
-
     Inicia el proceso de minado en un asteroide, bloqueándolo para el usuario.
     Devuelve la información sobre el tiempo de finalización.
     """
@@ -30,15 +28,13 @@ def start_mining_endpoint(
     )
     return mining_info
 
-@router.post("/claim", response_model=MiningClaimResponse, status_code=status.HTTP_200_OK)
-def claim_mining_rewards_endpoint(
+@router.post("/reclamar", response_model=MiningClaimResponse, status_code=status.HTTP_200_OK, response_model_by_alias=True)
+def reclamar_minado(
     request: MiningStartRequest, # Se reutiliza el request para obtener el asteroid_id
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    2. POST /claim: Usa un body simple con asteroid_id y devuelve MiningClaimResponse.
-
     Reclama los recursos una vez que el tiempo de minado ha concluido.
     Verifica que el tiempo se haya cumplido y que el reclamante sea el minero original.
     """

@@ -32,6 +32,26 @@ def agregar_equipo(db: Session, player_id: int, item_id: str, quantity: int):
         )
         db.add(new_player_item)
 
+def agregar_recurso(db: Session, player_id: int, resource_id: int, quantity: int):
+    """
+    Añade una cantidad de un recurso al inventario de un jugador.
+    Maneja la lógica de INSERT/UPDATE para la tabla 'inventory'.
+    """
+    player_resource = db.query(Inventory).filter(
+        Inventory.player_id == player_id,
+        Inventory.resource_id == resource_id
+    ).with_for_update().first()
+
+    if player_resource:
+        player_resource.quantity += quantity
+    else:
+        new_player_resource = Inventory(
+            player_id=player_id,
+            resource_id=resource_id,
+            quantity=quantity
+        )
+        db.add(new_player_resource)
+
 def crear_inventario_inicial(db: Session, player_id: int):
     """
     Crea el inventario inicial de recursos para un nuevo jugador usando una inserción masiva.

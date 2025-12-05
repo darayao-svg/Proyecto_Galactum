@@ -2,133 +2,169 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
-import uuid
 
 from app.models.asteroid import Asteroid
 from app.models.user import User
+from app.models.crafting import CatalogoItem
 from app.schemas.mining import MiningInfoResponse, MiningClaimResponse
-# Se importa la función del servicio de inventario existente.
-# NOTA: 'agregar_equipo' podría no ser el nombre más semántico para recursos,
-# pero se usa según lo encontrado en el archivo de referencia.
-from app.services.inventory_service import agregar_equipo
+from app.services.inventory_service import agregar_recurso
+
+# Constante de configuración para la velocidad de minado.
+# Representa 1 segundo por cada unidad de recurso.
+MINING_SPEED_SECONDS = 2
 
 def start_mining(db: Session, user: User, asteroid_id: str) -> MiningInfoResponse:
     """
-    Inicia el proceso de minado en un asteroide para el usuario actual.
+    Inicia el proceso de minado en un asteroide, incluyendo el nombre del recurso.
+    La duración total se calcula en base a la cantidad de recursos y la velocidad de minado.
     """
-    # 1. Búsqueda y validación del asteroide
-    # .with_for_update() es crucial para evitar 'race conditions'
-    asteroid = db.query(Asteroid).filter(Asteroid.id == asteroid_id).with_for_update().first()
+    # Modificar la consulta para incluir el join y obtener el nombre del recurso
+    query_result = db.query(Asteroid, CatalogoItem.nombre)\
+        .join(CatalogoItem, Asteroid.resource_id == CatalogoItem.id)\
+        .filter(Asteroid.id == asteroid_id)\
+        .with_for_update().first()
 
-    if not asteroid or not asteroid.is_active:
+    if not query_result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Asteroide no encontrado o inactivo.",
+            detail="Asteroide no encontrado.",
+        )
+    
+    asteroid, resource_name = query_result
+
+    if not asteroid.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Asteroide inactivo.",
         )
 
-    # --- Validación de Bloqueo ---
-    # Si el asteroide está ocupado por OTRO usuario, se lanza un error 409 (Conflict).
     if asteroid.mined_by_id is not None and str(asteroid.mined_by_id) != str(user.id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Asteroide ocupado. Minado termina en: {asteroid.mining_finish_at}",
         )
 
-    # Si el MISMO usuario ya lo está minando, se le devuelve el estado actual sin reiniciar.
+    # Si el mismo usuario ya está minando, devuelve el estado actual.
     if asteroid.mined_by_id is not None and str(asteroid.mined_by_id) == str(user.id) and asteroid.mining_finish_at:
         now = datetime.utcnow()
+        total_duration_seconds = asteroid.cantidad_restante * MINING_SPEED_SECONDS
+        total_duration = timedelta(seconds=total_duration_seconds)
+        start_time_approx = asteroid.mining_finish_at - total_duration
+        
+        duration_left = timedelta(seconds=0)
         if now < asteroid.mining_finish_at:
-            duration_left = asteroid.mining_finish_at - now
-            # NOTA: No almacenamos el start_time, por lo que se aproxima para la UI.
-            start_time_approx = asteroid.mining_finish_at - timedelta(seconds=5) # Duración base
-            return MiningInfoResponse(
-                status="already_mining",
-                start_time=start_time_approx,
-                finish_time=asteroid.mining_finish_at,
-                duration_seconds=int(duration_left.total_seconds()),
-                expected_yield=10, # Placeholder
-            )
+             duration_left = asteroid.mining_finish_at - now
 
-    # --- Cálculo ---
-    # A modo de ejemplo, la duración es fija. Esto debe cambiarse según lo que pida el front.
-    duration_seconds = 5 
+        return MiningInfoResponse(
+            estado="already_mining",
+            tiempo_inicio=start_time_approx,
+            tiempo_fin=asteroid.mining_finish_at,
+            duracion_segundos=int(duration_left.total_seconds()),
+            rendimiento_esperado=asteroid.cantidad_restante,
+            recurso_id=asteroid.resource_id,
+            velocidad_minado=MINING_SPEED_SECONDS,
+            nombre_recurso=resource_name,
+        )
+
+    # --- Lógica de Minado Escalable ---
+    duration_seconds = asteroid.cantidad_restante * MINING_SPEED_SECONDS
     duration = timedelta(seconds=duration_seconds)
     now = datetime.utcnow()
     finish_time = now + duration
 
-    # --- Acción ---
-    # Actualiza el asteroide para reflejar que el minado ha comenzado.
-    asteroid.mined_by_id = user.id
+    # Actualiza el asteroide para bloquearlo para este usuario.
+    asteroid.mined_by_id = str(user.id)
     asteroid.mining_finish_at = finish_time
     db.commit()
     db.refresh(asteroid)
 
-    # Retorna los datos para MiningInfoResponse.
     return MiningInfoResponse(
-        status="mining_started",
-        start_time=now,
-        finish_time=finish_time,
-        duration_seconds=duration_seconds,
-        expected_yield=10,  # Placeholder, debería ser dinámico.
+        estado="mining_started",
+        tiempo_inicio=now,
+        tiempo_fin=finish_time,
+        duracion_segundos=duration_seconds,
+        rendimiento_esperado=asteroid.cantidad_restante,
+        recurso_id=asteroid.resource_id,
+        velocidad_minado=MINING_SPEED_SECONDS,
+        nombre_recurso=resource_name,
     )
 
 def confirma_mining(db: Session, user: User, asteroid_id: str) -> MiningClaimResponse:
     """
-    Confirma y reclama los recursos de un minado que ya ha finalizado.
+    Confirma y reclama los recursos minados hasta el momento (Minado Parcial).
+    El asteroide se desbloquea siempre después de reclamar.
     """
-    # Verifica que el asteroide esté bloqueado por ESTE usuario.
-    asteroid = db.query(Asteroid).filter(Asteroid.id == asteroid_id).with_for_update().first()
+    # Modificar la consulta para incluir el join y obtener el nombre del recurso
+    query_result = db.query(Asteroid, CatalogoItem.nombre)\
+        .join(CatalogoItem, Asteroid.resource_id == CatalogoItem.id)\
+        .filter(Asteroid.id == asteroid_id)\
+        .with_for_update().first()
 
-    if not asteroid:
+    if not query_result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asteroide no encontrado.")
+
+    asteroid, resource_name = query_result
 
     if not asteroid.mined_by_id or str(asteroid.mined_by_id) != str(user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para reclamar los recursos de este asteroide.",
         )
-
-    # Verifica que el tiempo de minado haya transcurrido.
-    if datetime.utcnow() < asteroid.mining_finish_at:
+    
+    if not asteroid.mining_finish_at:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Too early. El minado finaliza a las {asteroid.mining_finish_at}",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Estado de minado inconsistente: no hay un tiempo de finalización registrado.",
         )
 
-    # --- Lógica de Recurso ---
-    # * cantidad_a_extraer debe ser dinámica (basada en nave, tripulación, etc.).
-    cantidad_a_extraer = 10
+    # --- Lógica de Reclamo Parcial ---
     
-    # * Si ast.cantidad_restante < cantidad_a_extraer, extrae solo lo que queda.
-    cantidad_extraida = min(cantidad_a_extraer, asteroid.cantidad_restante)
-    resource_type = asteroid.resource_type
+    # 1. Deducir el tiempo de inicio original.
+    total_time_needed_seconds = asteroid.cantidad_restante * MINING_SPEED_SECONDS
+    total_time_needed = timedelta(seconds=total_time_needed_seconds)
+    start_time = asteroid.mining_finish_at - total_time_needed
 
-    # --- Base de Datos ---
-    # * Resta ast.cantidad_restante.
-    asteroid.cantidad_restante -= cantidad_extraida
-    
-    # * Limpia el bloqueo (mined_by_id = None, mining_finish_at = None).
-    asteroid.mined_by_id = None
-    asteroid.mining_finish_at = None
+    # 2. Calcular la cantidad extraída basada en el tiempo transcurrido.
+    elapsed_seconds = (datetime.utcnow() - start_time).total_seconds()
+    cantidad_extraida = int(elapsed_seconds / MINING_SPEED_SECONDS)
 
-    if asteroid.cantidad_restante <= 0:
-        asteroid.is_active = False
-        asteroid.reaparecer_en = datetime.utcnow() + timedelta(minutes=5)
+    # 3. Validaciones
+    if cantidad_extraida < 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No has minado lo suficiente para reclamar al menos 1 unidad.",
+        )
 
-    # * Inventario: Simula la llamada a la función para añadir el recurso.
+    # Limitar la extracción a la cantidad máxima disponible.
+    if cantidad_extraida > asteroid.cantidad_restante:
+        cantidad_extraida = asteroid.cantidad_restante
+
+    resource_id = asteroid.resource_id
+
+    # --- Actualización de la Base de Datos ---
+    # Añadir al inventario del jugador.
     if user.jugador:
-        agregar_equipo(db=db, player_id=user.jugador.id, item_id=resource_type, quantity=cantidad_extraida)
+        agregar_recurso(db=db, player_id=user.jugador.id, resource_id=resource_id, quantity=cantidad_extraida)
     else:
-        # Esto no debería ocurrir si la data es consistente.
         db.rollback()
         raise HTTPException(status_code=500, detail="Error de consistencia: usuario sin jugador asociado.")
 
+    # Restar del asteroide.
+    asteroid.cantidad_restante -= cantidad_extraida
+
+    # IMPORTANTE: Siempre desbloquear el asteroide para que pueda ser minado de nuevo.
+    asteroid.mined_by_id = None
+    asteroid.mining_finish_at = None
+
+    # Si el asteroide se agota, desactivarlo y programar su reaparición.
+    if asteroid.cantidad_restante <= 0:
+        asteroid.is_active = False
+        asteroid.reaparecer_en = datetime.utcnow() + timedelta(minutes=10)
+
     db.commit()
 
-    # Retorna MiningClaimResponse.
     return MiningClaimResponse(
-        resource_obtained=resource_type,
-        amount_added=cantidad_extraida,
-        asteroid_remaining=asteroid.cantidad_restante,
-        inventory_current_weight=None # Opcional: requeriría lógica adicional en inventario.
+        nombre_recurso=resource_name,
+        cantidad_agregada=cantidad_extraida,
+        cantidad_restante_asteroide=asteroid.cantidad_restante
     )
