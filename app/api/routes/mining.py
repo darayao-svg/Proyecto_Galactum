@@ -24,13 +24,13 @@ def iniciar_minado(
     mining_info = mining_service.start_mining(
         db=db,
         user=current_user,
-        asteroid_id=request.asteroid_id
+        asteroid_name=request.asteroid_name
     )
     return mining_info
 
 @router.post("/reclamar", response_model=MiningClaimResponse, status_code=status.HTTP_200_OK, response_model_by_alias=True)
 def reclamar_minado(
-    request: MiningStartRequest, # Se reutiliza el request para obtener el asteroid_id
+    request: MiningStartRequest, # Se reutiliza el request para obtener el asteroid_name
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -41,6 +41,6 @@ def reclamar_minado(
     claim_response = mining_service.confirma_mining(
         db=db,
         user=current_user,
-        asteroid_id=request.asteroid_id
+        asteroid_name=request.asteroid_name
     )
     return claim_response

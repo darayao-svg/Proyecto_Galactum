@@ -13,7 +13,7 @@ from app.services.inventory_service import agregar_recurso
 # Representa 1 segundo por cada unidad de recurso.
 MINING_SPEED_SECONDS = 2
 
-def start_mining(db: Session, user: User, asteroid_id: str) -> MiningInfoResponse:
+def start_mining(db: Session, user: User, asteroid_name: str) -> MiningInfoResponse:
     """
     Inicia el proceso de minado en un asteroide, incluyendo el nombre del recurso.
     La duración total se calcula en base a la cantidad de recursos y la velocidad de minado.
@@ -21,7 +21,7 @@ def start_mining(db: Session, user: User, asteroid_id: str) -> MiningInfoRespons
     # Modificar la consulta para incluir el join y obtener el nombre del recurso
     query_result = db.query(Asteroid, CatalogoItem.nombre)\
         .join(CatalogoItem, Asteroid.resource_id == CatalogoItem.id)\
-        .filter(Asteroid.id == asteroid_id)\
+        .filter(Asteroid.asteroid == asteroid_name)\
         .with_for_update().first()
 
     if not query_result:
@@ -89,7 +89,7 @@ def start_mining(db: Session, user: User, asteroid_id: str) -> MiningInfoRespons
         nombre_recurso=resource_name,
     )
 
-def confirma_mining(db: Session, user: User, asteroid_id: str) -> MiningClaimResponse:
+def confirma_mining(db: Session, user: User, asteroid_name: str) -> MiningClaimResponse:
     """
     Confirma y reclama los recursos minados hasta el momento (Minado Parcial).
     El asteroide se desbloquea siempre después de reclamar.
@@ -97,7 +97,7 @@ def confirma_mining(db: Session, user: User, asteroid_id: str) -> MiningClaimRes
     # Modificar la consulta para incluir el join y obtener el nombre del recurso
     query_result = db.query(Asteroid, CatalogoItem.nombre)\
         .join(CatalogoItem, Asteroid.resource_id == CatalogoItem.id)\
-        .filter(Asteroid.id == asteroid_id)\
+        .filter(Asteroid.asteroid == asteroid_name)\
         .with_for_update().first()
 
     if not query_result:

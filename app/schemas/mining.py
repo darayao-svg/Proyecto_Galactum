@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 class MiningStartRequest(BaseModel):
-    asteroid_id: str
+    asteroid_name: str = Field(..., description="Identificador visual del asteroide (ej: 'ast_efd4c70d-1cfc-45a9-a7db-95436dc55ef2')")
 
 class MiningInfoResponse(BaseModel):
     status: str = Field(..., alias="estado")
