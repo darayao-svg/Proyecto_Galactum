@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, UniqueConstraint, TIMESTAMP
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -10,6 +11,14 @@ class CatalogoItem(Base):
     nombre = Column(String, nullable=False)
     descripcion = Column(Text)
     tipo = Column(String, nullable=False) # ej: 'recurso', 'componente', 'equipamiento'
+    rareza = Column(String(50), nullable=True)
+    produccion_min = Column(Integer, nullable=True)
+    produccion_max = Column(Integer, nullable=True)
+    energia_necesaria = Column(Integer, nullable=True)
+    imagen_url = Column(String(255), nullable=True)
+    
+    # Configuración para 'DEFAULT CURRENT_TIMESTAMP'
+    creado_en = Column(TIMESTAMP, server_default=func.now(), nullable=True)
 
 class RecetaCrafteo(Base):
     __tablename__ = "recetas_crafteo"

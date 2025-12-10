@@ -10,6 +10,10 @@ class InventoryItem(BaseModel):
     # Añadimos los campos opcionales para el nombre y la descripción.
     nombre: Optional[str] = None
     descripcion: Optional[str] = None
+    tipo: Optional[str] = None
+    rareza: Optional[str] = None
+    imagen_url: Optional[str] = None
+
 
     # Esto es importante para que Pydantic pueda leer desde objetos de SQLAlchemy si es necesario.
     class Config:

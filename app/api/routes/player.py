@@ -82,7 +82,10 @@ def get_player_resources(
         Inventory.resource_id,
         Inventory.quantity,
         CatalogoItem.nombre,
-        CatalogoItem.descripcion
+        CatalogoItem.descripcion,
+        CatalogoItem.tipo,
+        CatalogoItem.rareza,
+        CatalogoItem.imagen_url
     ).join(
         CatalogoItem, Inventory.resource_id == CatalogoItem.id
     ).filter(
