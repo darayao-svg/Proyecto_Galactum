@@ -21,13 +21,14 @@ class CraftResponse(BaseModel):
     consumed_items: Optional[List[Dict[str, Any]]] = None
 
 class RecipeIngredient(BaseModel):
-    item_id: int  # Ahora es int
-    quantity: int
+    item_id: int
+    name: str       # El JSON mostrará "name", nosotros le pasaremos el valor de "nombre"
+    quantity: int   # El JSON mostrará "quantity", nosotros le pasaremos "cantidad"
 
 class RecipeResponse(BaseModel):
-    id: int       # ID del item resultante (int)
+    id: int
     name: str
-    description: str
+    description: str | None = None
     ingredients: List[RecipeIngredient]
 
 # --- LEGACY / OTROS ---

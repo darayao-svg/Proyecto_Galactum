@@ -74,7 +74,7 @@ def craft_item_endpoint(
 # -----------------------------------------------------------------------------
 # 2. ENDPOINTS DE INFORMACIÓN (RECETAS DISPONIBLES)
 # -----------------------------------------------------------------------------
-
+'''
 def _obtener_recetas_por_tipo(db: Session, tipos_item: List[str]) -> List[RecipeResponse]:
     """
     Función auxiliar para buscar items de ciertos tipos y formatearlos como recetas.
@@ -110,15 +110,49 @@ def _obtener_recetas_por_tipo(db: Session, tipos_item: List[str]) -> List[Recipe
             ))
             
     return lista_respuesta
+'''
 
 @router.get("/api/v1/factory/recipes", response_model=List[RecipeResponse])
 def get_factory_recipes(db: Session = Depends(get_db)):
     """
-    Obtiene recetas para la Fábrica (Recursos, Componentes, Materiales).
+    Obtiene todos los items crafteables (tipo 'SECUNDARIO') y sus recetas.
     """
-    # Define aquí qué 'tipos' de items se hacen en la fábrica
-    tipos_fabrica = ['recurso', 'componente', 'material']
-    return _obtener_recetas_por_tipo(db, tipos_fabrica)
+    
+    # 1. Buscar items crafteables (Filtro arreglado: "SECUNDARIO" en mayúsculas)
+    items_crafteables = db.query(CatalogoItem).filter(
+        CatalogoItem.tipo == "SECUNDARIO"
+    ).all()
+    
+    lista_respuesta = []
+
+    for item in items_crafteables:
+        
+        # 2. Buscar ingredientes (JOIN para sacar el nombre del ingrediente)
+        datos_ingredientes = (
+            db.query(RecetaCrafteo, CatalogoItem)
+            .join(CatalogoItem, RecetaCrafteo.item_requerido_id == CatalogoItem.id)
+            .filter(RecetaCrafteo.item_resultado_id == item.id)
+            .all()
+        )
+        
+        # 3. Formatear ingredientes (Mapeo DB Español -> Schema Inglés)
+        ingredientes_format = []
+        for receta, info_ingrediente in datos_ingredientes:
+            ingredientes_format.append(RecipeIngredient(
+                item_id=info_ingrediente.id,
+                name=info_ingrediente.nombre,  # Asignamos columna 'nombre' al campo 'name'
+                quantity=receta.cantidad       # Asignamos columna 'cantidad' al campo 'quantity'
+            ))
+
+        # 4. Crear respuesta final (Mapeo DB Español -> Schema Inglés)
+        lista_respuesta.append(RecipeResponse(
+            id=item.id,
+            name=item.nombre,                  # 'nombre' -> 'name'
+            description=item.descripcion or "", # 'descripcion' -> 'description'
+            ingredients=ingredientes_format    # lista -> 'ingredients'
+        ))
+            
+    return lista_respuesta
 
 @router.get("/api/v1/armory/blueprints", response_model=List[RecipeResponse])
 def get_armory_blueprints(db: Session = Depends(get_db)):
